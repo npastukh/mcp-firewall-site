@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCP Firewall — аналитический дашборд</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body class="page-dashboard">
+    <div class="page-shell">
+      <nav class="top-nav reveal-fast">
+        <a class="nav-pill is-active" href="./">Аналитика</a>
+        <a class="nav-pill" href="./demo/">Демо-контур</a>
+      </nav>
+
+      <header class="hero reveal">
+        <div class="hero-copy">
+          <p class="eyebrow">Исследовательский контур ВКР</p>
+          <h1>MCP Firewall: аналитика эксперимента</h1>
+          <p class="hero-text">
+            Здесь собраны архитектура стенда, структура датасета, сравнение моделей,
+            ошибки классификации и оценка производительности защитного сервиса.
+          </p>
+        </div>
+        <div class="hero-panel">
+          <div class="status-pill">Локальный стенд и отчеты</div>
+          <div class="hero-metric">
+            <span class="metric-label">Лидер по macro F1</span>
+            <strong id="hero-scheme">HistGradientBoosting</strong>
+          </div>
+          <div class="hero-metric">
+            <span class="metric-label">Что собрано в одном месте</span>
+            <strong>датасет, модели, ошибки и performance</strong>
+          </div>
+          <a class="hero-link" href="./demo/">Перейти к демо-сценариям</a>
+        </div>
+      </header>
+
+      <main>
+        <section class="panel reveal">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Архитектура</p>
+              <h2>Экспериментальный стенд</h2>
+            </div>
+            <p class="section-note">
+              Стенд объединяет агентный клиент, защитный сервис, MCP-слой и backend API в один воспроизводимый контур.
+            </p>
+          </div>
+          <div class="architecture-grid">
+            <article class="arch-card">
+              <span class="arch-step">01</span>
+              <h3>Агентный клиент</h3>
+              <p>Генерирует MCP-вызовы по нормальным и атакующим сценариям.</p>
+            </article>
+            <article class="arch-card">
+              <span class="arch-step">02</span>
+              <h3>Защитный сервис</h3>
+              <p>Проверяет политики, применяет правила и передает сложные случаи в слой оценки риска.</p>
+            </article>
+            <article class="arch-card">
+              <span class="arch-step">03</span>
+              <h3>MCP-сервер</h3>
+              <p>Предоставляет файловые и HTTP-инструменты как объект защиты.</p>
+            </article>
+            <article class="arch-card">
+              <span class="arch-step">04</span>
+              <h3>Телеметрия</h3>
+              <p>Сохраняет события, решения и признаки для EDA, отчетов и сравнения моделей.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="stats-grid reveal" id="kpi-grid"></section>
+
+        <section class="panel reveal">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Распределения</p>
+              <h2>Обзор датасета</h2>
+            </div>
+            <p class="section-note">
+              Здесь показана структура датасета по классам, сценариям и итоговым решениям системы.
+            </p>
+          </div>
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3>Классы событий</h3>
+              <div id="labels-chart" class="bar-chart"></div>
+            </div>
+            <div class="chart-card">
+              <h3>Решения защитника</h3>
+              <div id="decisions-chart" class="bar-chart"></div>
+            </div>
+            <div class="chart-card chart-card-wide">
+              <h3>Сценарии генерации</h3>
+              <div id="scenario-grid" class="scenario-grid"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel reveal">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Оценка</p>
+              <h2>Качество моделей и производительность системы</h2>
+            </div>
+            <p class="section-note">
+              В этом разделе собраны метрики моделей, интерпретация признаков и оценка производительности защитного сервиса.
+            </p>
+          </div>
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3>Протокол валидации</h3>
+              <div id="split-protocol" class="meta-list"></div>
+            </div>
+            <div class="chart-card">
+              <h3>Ключевые результаты</h3>
+              <div id="evaluation-summary" class="meta-list"></div>
+            </div>
+            <div class="chart-card chart-card-wide">
+              <h3>Лидерборд ML-моделей по macro F1</h3>
+              <div id="model-leaderboard" class="bar-chart"></div>
+            </div>
+            <div class="chart-card">
+              <h3>Confusion matrix лидера</h3>
+              <div id="confusion-matrix" class="matrix-wrap"></div>
+            </div>
+            <div class="chart-card">
+              <h3>Ошибки по сценариям</h3>
+              <div id="scenario-errors" class="bar-chart"></div>
+            </div>
+            <div class="chart-card chart-card-wide">
+              <h3>Overfitting gap</h3>
+              <div id="overfitting-gap" class="bar-chart"></div>
+            </div>
+            <div class="chart-card chart-card-wide">
+              <h3>Сравнение моделей</h3>
+              <p class="chart-note">
+                Таблица позволяет отдельно посмотреть на качество ML-моделей и на итоговый рабочий контур. Гибридная схема важна не только метриками, но и гарантированной ранней блокировкой явных нарушений.
+              </p>
+              <div class="table-wrap compact-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Модель</th>
+                      <th>Accuracy</th>
+                      <th>Macro Precision</th>
+                      <th>Macro Recall</th>
+                      <th>Macro F1</th>
+                      <th>Weighted F1</th>
+                      <th>ROC-AUC OVR</th>
+                    </tr>
+                  </thead>
+                  <tbody id="model-metrics-table"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="chart-card">
+              <h3>SHAP-анализ признаков</h3>
+              <div id="feature-importance-chart" class="bar-chart"></div>
+            </div>
+            <div class="chart-card">
+              <h3>Производительность</h3>
+              <div class="table-wrap compact-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Конфигурация</th>
+                      <th>На событие, мс</th>
+                      <th>Пропускная способность</th>
+                    </tr>
+                  </thead>
+                  <tbody id="performance-table"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel reveal">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Интерактивный анализ</p>
+              <h2>Размер запроса и время ответа</h2>
+            </div>
+            <p class="section-note">
+              Визуализация показывает различие между normal, malicious и anomalous событиями по двум признакам.
+            </p>
+          </div>
+          <div class="filters" id="filters"></div>
+          <div class="scatter-wrap">
+            <svg id="scatter-plot" viewBox="0 0 760 420" role="img" aria-label="Scatter plot"></svg>
+          </div>
+          <div id="scatter-legend" class="legend"></div>
+        </section>
+
+        <section class="panel reveal">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Разбор событий</p>
+              <h2>Решения защитника</h2>
+            </div>
+            <p class="section-note">
+              Панель позволяет разбирать отдельные события, их признаки, сработавшие правила и итоговые решения системы.
+            </p>
+          </div>
+          <div class="explorer-grid">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Класс</th>
+                    <th>Решение</th>
+                    <th>Инструмент</th>
+                    <th>Размер запроса</th>
+                    <th>Время ответа</th>
+                    <th>Риск</th>
+                  </tr>
+                </thead>
+                <tbody id="events-table"></tbody>
+              </table>
+            </div>
+            <aside class="detail-card" id="event-detail">
+              <p class="detail-empty">Выбери событие, чтобы посмотреть детали.</p>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <template id="kpi-card-template">
+      <article class="kpi-card reveal-fast">
+        <span class="kpi-label"></span>
+        <strong class="kpi-value"></strong>
+        <p class="kpi-note"></p>
+      </article>
+    </template>
+
+    <script src="/assets/app.js"></script>
+  </body>
+</html>

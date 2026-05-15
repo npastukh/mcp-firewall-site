@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCP Firewall — демонстрационный контур</title>
+    <link rel="stylesheet" href="/demo/assets/styles.css" />
+  </head>
+  <body class="page-demo">
+    <div class="page-shell">
+      <nav class="top-nav">
+        <a class="nav-pill" href="../">Аналитика</a>
+        <a class="nav-pill is-active" href="./">Демо-контур</a>
+      </nav>
+
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Демонстрация работы прототипа</p>
+          <h1>MCP Firewall: разбор одного запроса</h1>
+          <p class="hero-text">
+            Интерфейс показывает путь от пользовательского запроса к MCP-вызову,
+            который затем анализируется firewall и получает итоговое решение.
+          </p>
+        </div>
+        <div class="hero-panel">
+          <div class="status-pill">Локальный сценарий</div>
+          <div class="hero-metric">
+            <span class="metric-label">Лидер эксперимента</span>
+            <strong id="hero-scheme">HistGradientBoosting</strong>
+          </div>
+          <div class="hero-metric">
+            <span class="metric-label">Итоговые решения</span>
+            <strong>allow / warn / block</strong>
+          </div>
+          <div class="hero-metric">
+            <span class="metric-label">Что показывает demo</span>
+            <strong>путь от запроса к MCP-вызову и решению</strong>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section class="panel panel-demo-scope">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Границы demo</p>
+              <h2>Что именно показывает этот интерфейс</h2>
+            </div>
+            <p class="section-note">
+              Этот экран нужен не для имитации полного production-контура, а для наглядного показа
+              логики firewall на одном воспроизводимом запросе.
+            </p>
+          </div>
+          <div class="scope-grid">
+            <article class="scope-card">
+              <strong>Показывается явно</strong>
+              <p>Формирование MCP tools/call, проверки политики, правила, оценка риска и итоговое решение.</p>
+            </article>
+            <article class="scope-card">
+              <strong>Моделируется локально</strong>
+              <p>Интерпретация пользовательского запроса и backend-ответ воспроизводятся сценарно внутри demo.</p>
+            </article>
+            <article class="scope-card">
+              <strong>Зачем это сделано</strong>
+              <p>Такой формат позволяет разбирать работу firewall пошагово и не зависеть от внешних сервисов во время защиты.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel panel-flow">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Логика demo</p>
+              <h2>Что именно происходит в демонстрации</h2>
+            </div>
+            <p class="section-note">
+              Интерфейс разделяет пользовательский запрос, агентную интерпретацию и собственно MCP-вызов,
+              который затем анализируется защитным сервисом.
+            </p>
+          </div>
+          <div class="flow-ribbon">
+            <article class="flow-step">
+              <span class="flow-index">01</span>
+              <strong>Пользовательский запрос</strong>
+              <p>Текстовый ввод задает внешний сценарий, но не является объектом анализа firewall.</p>
+            </article>
+            <article class="flow-step">
+              <span class="flow-index">02</span>
+              <strong>Интерпретация агентом</strong>
+              <p>По запросу выбираются инструмент, параметры и целевой MCP-сервер.</p>
+            </article>
+            <article class="flow-step">
+              <span class="flow-index">03</span>
+              <strong>MCP tools/call</strong>
+              <p>Формируется JSON-RPC-вызов, который и поступает в защитный контур.</p>
+            </article>
+            <article class="flow-step">
+              <span class="flow-index">04</span>
+              <strong>Проверки firewall</strong>
+              <p>Дальше применяются правила, оценка риска и политика принятия решения.</p>
+            </article>
+            <article class="flow-step">
+              <span class="flow-index">05</span>
+              <strong>Итоговое решение</strong>
+              <p>Вызов получает allow, warn или block и фиксируется в журнале.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Сценарии</p>
+              <h2>Готовые демонстрационные сценарии</h2>
+            </div>
+            <p class="section-note">
+              Ниже приведены безопасные, пограничные и опасные сценарии. Каждый из них задает
+              пользовательский запрос, из которого затем строится MCP tools/call.
+            </p>
+          </div>
+          <div id="demo-examples" class="examples-grid"></div>
+        </section>
+
+        <section class="demo-layout">
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Ввод</p>
+                <h2>Пользовательский запрос</h2>
+              </div>
+              <p class="section-note">
+                Здесь моделируется агентный ввод. Ниже отдельно показывается, какой MCP-вызов
+                формируется из пользовательского запроса до начала анализа firewall.
+              </p>
+            </div>
+
+            <div class="composer-card">
+              <label class="field field-wide">
+                <span>Запрос пользователя</span>
+                <textarea id="demo-prompt" rows="8">Прочитай файл /workspace/project/README.md</textarea>
+              </label>
+
+              <div class="control-grid">
+                <label class="field">
+                  <span>Клиент</span>
+                  <select id="demo-client"></select>
+                </label>
+                <label class="field">
+                  <span>Транспорт</span>
+                  <select id="demo-transport"></select>
+                </label>
+              </div>
+
+              <div class="request-preview-card">
+              <div class="request-preview-head">
+                <strong>Сформированный MCP-вызов</strong>
+                <span>анализируется firewall</span>
+              </div>
+              <p class="request-preview-note">
+                Пользовательский текст не передается в MCP напрямую. В demo сначала выполняется локальная
+                сценарная интерпретация запроса, затем формируется JSON-RPC tools/call, и именно этот вызов
+                обрабатывает firewall.
+              </p>
+              <pre id="demo-request-preview"></pre>
+            </div>
+
+              <div class="actions-row">
+                <button id="demo-run" type="button">Запустить разбор</button>
+                <button id="demo-reset" type="button" class="button-secondary">Сбросить демонстрационную сессию</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Сводка</p>
+                <h2>Итоговое решение системы</h2>
+              </div>
+              <p class="section-note">
+                В этом блоке отображаются итоговый MCP tool call, класс риск-оценки,
+                решение защитного сервиса и краткое объяснение.
+              </p>
+            </div>
+            <div id="demo-summary" class="summary-grid"></div>
+            <div id="demo-response" class="response-slot"></div>
+          </section>
+        </section>
+
+        <section class="trace-layout">
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Trace</p>
+                <h2>Пошаговая обработка события</h2>
+              </div>
+              <p class="section-note">
+                Пошаговый разбор показывает сначала интерпретацию пользовательского запроса,
+                затем сформированный MCP-вызов и только после этого работу защитного контура.
+              </p>
+            </div>
+            <div id="demo-trace" class="trace-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Политики</p>
+                <h2>Действующие ограничения и политики</h2>
+              </div>
+              <p class="section-note">
+                В этом блоке кратко представлены транспортные ограничения, allowlist инструментов,
+                безопасные файловые корни и пороги риск-оценки.
+              </p>
+            </div>
+            <div id="policy-card" class="policy-card"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/demo/assets/app.js"></script>
+  </body>
+</html>
