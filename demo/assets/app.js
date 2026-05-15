@@ -14,7 +14,7 @@ function createDemoSession() {
 }
 
 async function init() {
-  const response = await fetch("/demo/data/dashboard.json");
+  const response = await fetch("/mcp-firewall-site/demo/data/dashboard.json");
   const data = await response.json();
   state.raw = data;
 

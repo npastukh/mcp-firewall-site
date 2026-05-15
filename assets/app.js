@@ -29,7 +29,7 @@ function createDemoSession() {
 }
 
 async function init() {
-  const response = await fetch("/data/dashboard.json");
+  const response = await fetch("/mcp-firewall-site/data/dashboard.json");
   const data = await response.json();
   state.raw = data;
   state.filteredEvents = data.events.slice();
