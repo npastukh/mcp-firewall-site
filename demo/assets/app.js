@@ -79,6 +79,23 @@ function renderPolicy(policy) {
   `;
 }
 
+function renderPolicyForInterpretation(policy, interpretation) {
+  if (interpretation.status === "supported") {
+    renderPolicy(policy);
+    return;
+  }
+
+  const target = document.getElementById("policy-card");
+  target.innerHTML = `
+    <div class="response-card">
+      <span>Статус применения политик</span>
+      <strong>Проверки политик не запускались</strong>
+      <div>Полный набор транспортных ограничений, allowlist инструментов и порогов риска применяется только после формирования корректного MCP tools/call.</div>
+      <div style="margin-top:12px;">Текущий статус интерпретации: ${formatInterpretationStatus(interpretation.status)}.</div>
+    </div>
+  `;
+}
+
 function populateSelect(targetId, values) {
   const select = document.getElementById(targetId);
   select.innerHTML = values.map((value) => `<option value="${value}">${value}</option>`).join("");
@@ -92,6 +109,7 @@ function runDemo() {
   const transportType = document.getElementById("demo-transport").value || (policy.allowed_transports || [])[0];
   const interpretation = interpretPrompt(prompt, policy);
   renderInterpretation(interpretation);
+  renderPolicyForInterpretation(policy, interpretation);
 
   if (interpretation.status !== "supported") {
     renderIncompleteOrUnknown(prompt, clientId, transportType, interpretation);
@@ -161,9 +179,11 @@ function evaluateDemoEvent(event, policy, session) {
   }
 
   const fullFeatures = buildFullFeatures(event, session, policy, responseAware);
-  const riskScore = scoreRisk(fullFeatures, session);
-  const mlClass = classifyMlOutcome(riskScore, ruleMatches, fullFeatures, policy);
+  const riskExplanation = explainRiskScore(fullFeatures, session);
+  const riskScore = riskExplanation.total;
+  const mlClass = classifyMlOutcome(riskScore, policy);
   const decision = deriveDecision(riskScore, ruleMatches, policy);
+  const decisionDriver = determineDecisionDriver(riskScore, ruleMatches, policy);
   const rationale = buildRationale(decision, riskScore, ruleMatches, policy);
 
   return {
@@ -174,10 +194,12 @@ function evaluateDemoEvent(event, policy, session) {
     backendResponse,
     ruleMatches,
     riskScore,
+    riskExplanation,
     mlClass,
     decision,
+    decisionDriver,
     rationale,
-    trace: buildTrace(event, requestFeatures, fullFeatures, ruleMatches, backendResponse, mlClass, riskScore, decision, rationale),
+    trace: buildTrace(event, requestFeatures, fullFeatures, ruleMatches, backendResponse, mlClass, riskScore, decision, decisionDriver, rationale),
   };
 }
 
@@ -335,13 +357,29 @@ function scoreRisk(features, session) {
   return Math.min(score, 1);
 }
 
-function classifyMlOutcome(riskScore, ruleMatches, features, policy) {
-  if (ruleMatches.some((match) => match.severity === "block") || features.private_ip_flag || features.sensitive_path_flag) {
-    return "malicious";
-  }
-  if (ruleMatches.some((match) => match.severity === "warn") || riskScore >= policy.warn_risk_threshold) {
-    return "anomalous";
-  }
+function explainRiskScore(features, session) {
+  const contributions = [{ label: "base_score", value: 0.05 }];
+
+  if (features.sensitive_path_flag) contributions.push({ label: "sensitive_path_flag", value: 0.45 });
+  if (features.private_ip_flag) contributions.push({ label: "private_ip_flag", value: 0.35 });
+  if (features.sensitive_keyword_flag) contributions.push({ label: "sensitive_keyword_flag", value: 0.2 });
+  if (features.repeated_tool_flag) contributions.push({ label: "repeated_tool_flag", value: 0.05 });
+  if (features.failed_calls_last_session >= 2) contributions.push({ label: "failed_calls_last_session >= 2", value: 0.1 });
+  if (features.payload_size > 8000) contributions.push({ label: "payload_size > 8000", value: 0.1 });
+  if (features.response_time_ms > 2000) contributions.push({ label: "response_time_ms > 2000", value: 0.1 });
+  if (session.sensitiveHits >= 1) contributions.push({ label: "session_sensitive_hits >= 1", value: 0.1 });
+
+  const rawTotal = contributions.reduce((sum, item) => sum + item.value, 0);
+  return {
+    baseScore: 0.05,
+    contributions,
+    total: Math.min(rawTotal, 1),
+  };
+}
+
+function classifyMlOutcome(riskScore, policy) {
+  if (riskScore >= policy.block_risk_threshold) return "malicious";
+  if (riskScore >= policy.warn_risk_threshold) return "anomalous";
   return "normal";
 }
 
@@ -363,7 +401,50 @@ function buildRationale(decision, riskScore, ruleMatches, policy) {
   return "Блокирующие правила не сработали, итоговый риск остался в безопасной зоне.";
 }
 
-function buildTrace(event, requestFeatures, fullFeatures, ruleMatches, backendResponse, mlClass, riskScore, decision, rationale) {
+function determineDecisionDriver(riskScore, ruleMatches, policy) {
+  const blockMatches = ruleMatches.filter((match) => match.severity === "block");
+  const warnMatches = ruleMatches.filter((match) => match.severity === "warn");
+
+  if (blockMatches.length) {
+    return {
+      source: "rule-based",
+      label: "rule-based слой",
+      detail: `сработало блокирующее правило: ${formatRuleName(blockMatches[0].name)}`,
+    };
+  }
+
+  if (riskScore >= policy.block_risk_threshold) {
+    return {
+      source: "ml",
+      label: "ML-модель",
+      detail: "ML risk score превысил порог block",
+    };
+  }
+
+  if (warnMatches.length) {
+    return {
+      source: "rule-based",
+      label: "rule-based слой",
+      detail: `сработало предупреждающее правило: ${formatRuleName(warnMatches[0].name)}`,
+    };
+  }
+
+  if (riskScore >= policy.warn_risk_threshold) {
+    return {
+      source: "ml",
+      label: "ML-модель",
+      detail: "ML risk score превысил порог warn",
+    };
+  }
+
+  return {
+    source: "safe",
+    label: "без эскалации",
+    detail: "ни правила, ни ML-порог не потребовали эскалации",
+  };
+}
+
+function buildTrace(event, requestFeatures, fullFeatures, ruleMatches, backendResponse, mlClass, riskScore, decision, decisionDriver, rationale) {
   const mcpRequest = buildMcpRequest(event);
   const trace = [
     {
@@ -428,8 +509,10 @@ function buildTrace(event, requestFeatures, fullFeatures, ruleMatches, backendRe
     title: "Оценка риска и итоговое решение",
     tone: decision,
     items: [
-      `класс оценочного слоя: ${mlClass}`,
+      `ml-класс: ${mlClass}`,
       `risk_score=${riskScore.toFixed(2)}`,
+      `источник решения: ${decisionDriver.label}`,
+      decisionDriver.detail,
       `решение=${decision}`,
       rationale,
     ],
@@ -452,14 +535,6 @@ function renderDemoResult(result, interpretation) {
   const summary = document.getElementById("demo-summary");
   summary.innerHTML = `
     <div class="summary-card">
-      <span>Режим интерпретации</span>
-      <strong>локальный сценарный разбор</strong>
-    </div>
-    <div class="summary-card">
-      <span>Статус интерпретации</span>
-      <strong>${formatInterpretationStatus(interpretation.status)}</strong>
-    </div>
-    <div class="summary-card">
       <span>Намерение</span>
       <strong>${interpretation.intent}</strong>
     </div>
@@ -472,8 +547,20 @@ function renderDemoResult(result, interpretation) {
       <strong>${result.event.jsonrpc_method}</strong>
     </div>
     <div class="summary-card">
-      <span>Оценочный слой</span>
+      <span>ML-оценка риска</span>
+      <strong>${result.riskScore.toFixed(2)}</strong>
+    </div>
+    <div class="summary-card">
+      <span>ML-вердикт</span>
       <strong>${result.mlClass}</strong>
+    </div>
+    <div class="summary-card">
+      <span>Источник решения</span>
+      <strong>${result.decisionDriver.label}</strong>
+    </div>
+    <div class="summary-card">
+      <span>Что сработало</span>
+      <strong>${result.decisionDriver.detail}</strong>
     </div>
     <div class="summary-card">
       <span>Итоговое решение</span>
@@ -483,15 +570,42 @@ function renderDemoResult(result, interpretation) {
 
   const response = document.getElementById("demo-response");
   response.innerHTML = `
-    <div class="response-card">
-      <span>Краткое объяснение</span>
-      <strong>${result.mlClass} / ${result.decision}</strong>
-      <div>${result.rationale}</div>
-      ${
-        result.backendResponse
-          ? `<div style="margin-top:12px;">Ответ backend: ${result.backendResponse.preview}</div>`
-          : `<div style="margin-top:12px;">Вызов был остановлен до обращения к MCP-серверу и backend.</div>`
-      }
+    <div class="response-grid">
+      <div class="response-card">
+        <span>Краткое объяснение</span>
+        <strong>${result.decisionDriver.label} / ${result.decision}</strong>
+        <div>${result.rationale}</div>
+        <div style="margin-top:12px;">ML-оценка риска: ${result.riskScore.toFixed(2)}; ML-вердикт: ${result.mlClass}.</div>
+        <div style="margin-top:8px;">Что определило решение: ${result.decisionDriver.detail}.</div>
+        ${
+          result.backendResponse
+            ? `<div style="margin-top:12px;">Ответ backend: ${result.backendResponse.preview}</div>`
+            : `<div style="margin-top:12px;">Вызов был остановлен до обращения к MCP-серверу и backend.</div>`
+        }
+      </div>
+      <div class="response-card">
+        <span>Локальное объяснение решения</span>
+        <strong>Какие признаки и правила сработали</strong>
+        <div class="explanation-block">
+          <div class="explanation-title">Rule-based слой</div>
+          ${
+            result.ruleMatches.length
+              ? `<ul class="explanation-list">${result.ruleMatches
+                  .map((match) => `<li><strong>${match.severity}</strong>: ${formatRuleName(match.name)} — ${match.reason}</li>`)
+                  .join("")}</ul>`
+              : `<div class="explanation-empty">Явные rule-based срабатывания отсутствуют.</div>`
+          }
+        </div>
+        <div class="explanation-block">
+          <div class="explanation-title">ML-оценка риска</div>
+          <ul class="explanation-list">
+            ${result.riskExplanation.contributions
+              .map((item) => `<li>${item.label}: +${Number(item.value).toFixed(2)}</li>`)
+              .join("")}
+          </ul>
+          <div class="explanation-total">Итоговый risk score: ${result.riskExplanation.total.toFixed(2)}</div>
+        </div>
+      </div>
     </div>
   `;
 
@@ -548,14 +662,6 @@ function renderIncompleteOrUnknown(prompt, clientId, transportType, interpretati
   const summary = document.getElementById("demo-summary");
   summary.innerHTML = `
     <div class="summary-card">
-      <span>Режим интерпретации</span>
-      <strong>локальный сценарный разбор</strong>
-    </div>
-    <div class="summary-card">
-      <span>Статус интерпретации</span>
-      <strong>${formatInterpretationStatus(interpretation.status)}</strong>
-    </div>
-    <div class="summary-card">
       <span>Намерение</span>
       <strong>${interpretation.intent}</strong>
     </div>
@@ -567,14 +673,25 @@ function renderIncompleteOrUnknown(prompt, clientId, transportType, interpretati
       <span>Итоговое решение</span>
       <strong><span class="badge decision-warn">не запущено</span></strong>
     </div>
+    <div class="summary-card">
+      <span>Причина остановки</span>
+      <strong>${formatInterpretationStatus(interpretation.status)}</strong>
+    </div>
   `;
 
   const response = document.getElementById("demo-response");
   response.innerHTML = `
-    <div class="response-card">
-      <span>Краткое объяснение</span>
-      <strong>${interpretation.message}</strong>
-      <div>Firewall-анализ не запускался, поскольку локальный интерпретатор не смог построить корректный MCP tools/call для запроса: ${prompt || "пустой ввод"}.</div>
+    <div class="response-grid">
+      <div class="response-card">
+        <span>Краткое объяснение</span>
+        <strong>${interpretation.message}</strong>
+        <div>Firewall-анализ не запускался, поскольку локальный интерпретатор не смог построить корректный MCP tools/call для запроса: ${prompt || "пустой ввод"}.</div>
+      </div>
+      <div class="response-card">
+        <span>Локальное объяснение решения</span>
+        <strong>Недоступно для текущего ввода</strong>
+        <div>Пояснение по признакам и rule-based срабатываниям строится только после формирования валидного MCP-вызова и запуска защитного контура.</div>
+      </div>
     </div>
   `;
 

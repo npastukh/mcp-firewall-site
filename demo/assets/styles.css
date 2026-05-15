@@ -559,10 +559,40 @@ button {
   line-height: 1.55;
 }
 
+.response-grid {
+  display: grid;
+  gap: 16px;
+}
+
 .response-card strong {
   display: block;
   margin: 8px 0 12px;
   color: var(--text);
+}
+
+.explanation-block + .explanation-block {
+  margin-top: 14px;
+}
+
+.explanation-title {
+  margin-bottom: 8px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.explanation-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.explanation-empty {
+  color: var(--muted);
+}
+
+.explanation-total {
+  margin-top: 10px;
+  color: var(--text);
+  font-weight: 600;
 }
 
 .trace-list {
