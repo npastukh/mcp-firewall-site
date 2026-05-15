@@ -90,10 +90,18 @@ function runDemo() {
   const prompt = document.getElementById("demo-prompt").value.trim();
   const clientId = document.getElementById("demo-client").value || (policy.allowed_clients || [])[0];
   const transportType = document.getElementById("demo-transport").value || (policy.allowed_transports || [])[0];
-  const event = buildDemoEvent(prompt, clientId, transportType, policy);
+  const interpretation = interpretPrompt(prompt, policy);
+  renderInterpretation(interpretation);
+
+  if (interpretation.status !== "supported") {
+    renderIncompleteOrUnknown(prompt, clientId, transportType, interpretation);
+    return;
+  }
+
+  const event = buildDemoEvent(prompt, clientId, transportType, policy, interpretation);
   const result = evaluateDemoEvent(event, policy, state.demoSession);
   updateDemoSession(event, result, state.demoSession);
-  renderDemoResult(result);
+  renderDemoResult(result, interpretation);
 }
 
 function buildMcpRequest(event) {
@@ -108,40 +116,16 @@ function buildMcpRequest(event) {
   };
 }
 
-function buildDemoEvent(prompt, clientId, transportType, policy) {
-  const lower = prompt.toLowerCase();
-  const path = extractPath(prompt);
-  const url = extractUrl(prompt);
-  let toolName = "filesystem.search";
-  let params = { path: "/workspace", query: prompt };
-  let serverId = "filesystem-server";
-
-  if (url || lower.includes("http") || lower.includes("открой")) {
-    toolName = "web.fetch";
-    params = { url: url || "https://example.com" };
-    serverId = policy.tool_server_map?.[toolName] || "http-server";
-  } else if (lower.includes("прочитай") || lower.includes("открой файл") || lower.includes("read")) {
-    toolName = "filesystem.read_file";
-    params = { path: path || "/workspace/project/README.md" };
-    serverId = policy.tool_server_map?.[toolName] || "filesystem-server";
-  } else {
-    toolName = "filesystem.search";
-    params = {
-      path: path || "/workspace/project",
-      query: cleanupSearchQuery(prompt),
-    };
-    serverId = policy.tool_server_map?.[toolName] || "filesystem-server";
-  }
-
+function buildDemoEvent(prompt, clientId, transportType, policy, interpretation) {
   return {
     prompt,
     client_id: clientId,
     transport_type: transportType,
     jsonrpc_method: "tools/call",
-    tool_name: toolName,
-    server_id: serverId,
-    params,
-    payload_size: estimatePayloadSize(prompt, params),
+    tool_name: interpretation.tool_name,
+    server_id: interpretation.server_id || policy.tool_server_map?.[interpretation.tool_name] || "filesystem-server",
+    params: interpretation.arguments,
+    payload_size: estimatePayloadSize(prompt, interpretation.arguments),
   };
 }
 
@@ -461,7 +445,7 @@ function updateDemoSession(event, result, session) {
   if (result.features.sensitive_path_flag || result.features.private_ip_flag) session.sensitiveHits += 1;
 }
 
-function renderDemoResult(result) {
+function renderDemoResult(result, interpretation) {
   const requestPreview = document.getElementById("demo-request-preview");
   requestPreview.textContent = JSON.stringify(buildMcpRequest(result.event), null, 2);
 
@@ -470,6 +454,14 @@ function renderDemoResult(result) {
     <div class="summary-card">
       <span>Режим интерпретации</span>
       <strong>локальный сценарный разбор</strong>
+    </div>
+    <div class="summary-card">
+      <span>Статус интерпретации</span>
+      <strong>${formatInterpretationStatus(interpretation.status)}</strong>
+    </div>
+    <div class="summary-card">
+      <span>Намерение</span>
+      <strong>${interpretation.intent}</strong>
     </div>
     <div class="summary-card">
       <span>Инструмент</span>
@@ -519,6 +511,116 @@ function renderDemoResult(result) {
     .join("");
 }
 
+function renderInterpretation(interpretation) {
+  const preview = document.getElementById("demo-interpretation-preview");
+  const status = document.getElementById("demo-interpretation-status");
+
+  status.textContent = formatInterpretationStatus(interpretation.status);
+  status.className = `interpretation-status status-${interpretation.status}`;
+
+  preview.textContent = JSON.stringify(
+    {
+      status: interpretation.status,
+      intent: interpretation.intent,
+      confidence: interpretation.confidence,
+      tool_name: interpretation.tool_name || null,
+      arguments: interpretation.arguments || null,
+      missing: interpretation.missing || [],
+      message: interpretation.message,
+    },
+    null,
+    2
+  );
+}
+
+function renderIncompleteOrUnknown(prompt, clientId, transportType, interpretation) {
+  const requestPreview = document.getElementById("demo-request-preview");
+  requestPreview.textContent = JSON.stringify(
+    {
+      status: interpretation.status,
+      message: interpretation.message,
+      mcp_request: null,
+    },
+    null,
+    2
+  );
+
+  const summary = document.getElementById("demo-summary");
+  summary.innerHTML = `
+    <div class="summary-card">
+      <span>Режим интерпретации</span>
+      <strong>локальный сценарный разбор</strong>
+    </div>
+    <div class="summary-card">
+      <span>Статус интерпретации</span>
+      <strong>${formatInterpretationStatus(interpretation.status)}</strong>
+    </div>
+    <div class="summary-card">
+      <span>Намерение</span>
+      <strong>${interpretation.intent}</strong>
+    </div>
+    <div class="summary-card">
+      <span>Клиент / транспорт</span>
+      <strong>${clientId} / ${transportType}</strong>
+    </div>
+    <div class="summary-card">
+      <span>Итоговое решение</span>
+      <strong><span class="badge decision-warn">не запущено</span></strong>
+    </div>
+  `;
+
+  const response = document.getElementById("demo-response");
+  response.innerHTML = `
+    <div class="response-card">
+      <span>Краткое объяснение</span>
+      <strong>${interpretation.message}</strong>
+      <div>Firewall-анализ не запускался, поскольку локальный интерпретатор не смог построить корректный MCP tools/call для запроса: ${prompt || "пустой ввод"}.</div>
+    </div>
+  `;
+
+  const trace = document.getElementById("demo-trace");
+  trace.innerHTML = [
+    {
+      step: 1,
+      title: "Сценарная интерпретация запроса",
+      items: [
+        `запрос: ${prompt || "пустой ввод"}`,
+        `намерение: ${interpretation.intent}`,
+        `статус: ${formatInterpretationStatus(interpretation.status)}`,
+        interpretation.message,
+      ],
+    },
+    {
+      step: 2,
+      title: "Формирование MCP-вызова",
+      tone: "warn",
+      items: [
+        "Корректный MCP tools/call не сформирован.",
+        interpretation.missing?.length
+          ? `Недостающие аргументы: ${interpretation.missing.join(", ")}`
+          : "Запрос находится вне поддерживаемых демонстрационных сценариев.",
+      ],
+    },
+    {
+      step: 3,
+      title: "Анализ firewall",
+      items: ["Разбор остановлен до этапа policy/rule/ML, так как валидный MCP-вызов отсутствует."],
+    },
+  ]
+    .map(
+      (step) => `
+        <div class="trace-card">
+          <div class="trace-head">
+            <strong>${step.step}. ${step.title}</strong>
+            ${step.tone ? `<span class="badge decision-${step.tone}">${step.tone}</span>` : ""}
+          </div>
+          <ul>${step.items.map((item) => `<li>${item}</li>`).join("")}</ul>
+        </div>
+      `
+    )
+    .join("");
+}
+
 function estimatePayloadSize(prompt, params) {
   return Math.max(
     220,
@@ -527,17 +629,178 @@ function estimatePayloadSize(prompt, params) {
 }
 
 function extractPath(text) {
-  const match = text.match(/(\/[^\s,;]+)/);
-  return match ? match[1] : "";
+  const normalized = normalizeWhitespace(text);
+  const candidates = [
+    normalized.match(/["'](\/[^"'\s,;]+|\.\.?\/[^"'\s,;]+|\.?[A-Za-z0-9_-]+(?:[./][A-Za-z0-9._-]+)+)["']/),
+    normalized.match(/(\/[^\s,;]+)/),
+    normalized.match(/\b(?:файл|файла|путь|path|file)\s+((?:\.\.?\/)?\.?[A-Za-z0-9_-]+(?:[./][A-Za-z0-9._-]+)+)/i),
+    normalized.match(/\b((?:\.\.?\/)?\.?[A-Za-z0-9_-]+(?:[./][A-Za-z0-9._-]+)+)\b/),
+  ];
+
+  for (const match of candidates) {
+    const candidate = match?.[1] || match?.[0] || "";
+    const normalizedPath = normalizePathCandidate(candidate);
+    if (normalizedPath) return normalizedPath;
+  }
+
+  return "";
 }
 
 function extractUrl(text) {
-  const match = text.match(/https?:\/\/[^\s]+/i);
-  return match ? match[0] : "";
+  const explicit = text.match(/https?:\/\/[^\s)]+/i);
+  if (explicit) return explicit[0];
+
+  const bare = text.match(/\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s,;]*)?/i);
+  if (bare) {
+    const candidate = bare[0];
+    return /^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`;
+  }
+
+  return "";
 }
 
 function cleanupSearchQuery(prompt) {
-  return prompt.replace(/^найди/i, "").replace(/^выполни поиск/i, "").trim() || prompt;
+  return normalizeWhitespace(
+    prompt
+      .replace(/^(найди|выполни поиск|поиск|search for|search)\s*/i, "")
+      .replace(/\b(?:в|inside|within)\s+(\/[^\s,;]+|(?:\.\.?\/)?\.?[A-Za-z0-9_-]+(?:[./][A-Za-z0-9._-]+)+)\b/gi, "")
+      .replace(/\b(?:файл|путь|path|file)\b/gi, "")
+  ) || prompt;
+}
+
+function interpretPrompt(prompt, policy) {
+  const normalizedPrompt = normalizeWhitespace(prompt);
+  const lower = normalizedPrompt.toLowerCase();
+  const path = extractPath(normalizedPrompt);
+  const url = extractUrl(normalizedPrompt);
+
+  if (!normalizedPrompt) {
+    return {
+      status: "unknown",
+      intent: "unknown",
+      confidence: 0,
+      message: "Пустой запрос не может быть интерпретирован как MCP-сценарий.",
+    };
+  }
+
+  if (hasFetchIntent(lower) || url) {
+    if (!url) {
+      return {
+        status: "incomplete",
+        intent: "web_fetch",
+        confidence: 0.52,
+        missing: ["url"],
+        message: "Распознан web-сценарий, но в запросе не указан конкретный URL.",
+      };
+    }
+
+    return {
+      status: "supported",
+      intent: "web_fetch",
+      confidence: 0.95,
+      tool_name: "web.fetch",
+      server_id: policy.tool_server_map?.["web.fetch"] || "http-server",
+      arguments: { url },
+      message: "Запрос интерпретирован как web-fetch вызов.",
+    };
+  }
+
+  if (hasReadIntent(lower, path)) {
+    if (!path) {
+      return {
+        status: "incomplete",
+        intent: "read_file",
+        confidence: 0.74,
+        missing: ["path"],
+        message: "Распознан сценарий чтения файла, но не указан конкретный путь.",
+      };
+    }
+
+    return {
+      status: "supported",
+      intent: "read_file",
+      confidence: 0.92,
+      tool_name: "filesystem.read_file",
+      server_id: policy.tool_server_map?.["filesystem.read_file"] || "filesystem-server",
+      arguments: { path },
+      message: "Запрос интерпретирован как чтение файла через filesystem.read_file.",
+    };
+  }
+
+  if (hasSearchIntent(lower)) {
+    const query = cleanupSearchQuery(normalizedPrompt);
+    if (!query || query.length < 3) {
+      return {
+        status: "incomplete",
+        intent: "search",
+        confidence: 0.61,
+        missing: ["query"],
+        message: "Распознан поисковый сценарий, но запрос недостаточно конкретен для построения search-вызова.",
+      };
+    }
+
+    return {
+      status: "supported",
+      intent: "search",
+      confidence: 0.83,
+      tool_name: "filesystem.search",
+      server_id: policy.tool_server_map?.["filesystem.search"] || "filesystem-server",
+      arguments: {
+        path: path || "/workspace/project",
+        query,
+      },
+      message: "Запрос интерпретирован как поиск по файловому дереву.",
+    };
+  }
+
+  return {
+    status: "unknown",
+    intent: "unknown",
+    confidence: 0.18,
+    message: "Запрос находится вне поддерживаемых демонстрационных сценариев. Demo интерпретирует чтение файла, web-fetch и поиск.",
+  };
+}
+
+function detectPromptIntent(prompt, context = {}) {
+  const lower = prompt.toLowerCase();
+
+  if (context.url) return "fetch";
+  if (hasReadIntent(lower, context.path)) return "read";
+  if (hasFetchIntent(lower)) return "fetch";
+  return "search";
+}
+
+function hasReadIntent(lower, path) {
+  if (/\b(read|cat|open file|show file)\b/i.test(lower)) return true;
+  if (/(прочитай|прочти|открой файл|покажи файл|выведи файл|содержимое файла)/i.test(lower)) return true;
+  if (path && /(файл|file|read|прочитай|прочти|открой|покажи)/i.test(lower)) return true;
+  return false;
+}
+
+function hasFetchIntent(lower) {
+  return /(fetch|http|url|сайт|страниц|страницу|перейди|скачай|запроси|web[- ]?запрос|открой\s+(?!файл))/i.test(lower);
+}
+
+function hasSearchIntent(lower) {
+  return /(найди|ищи|поиск|search|find|grep|поищи|проверь.*(секрет|token|password|key))/i.test(lower);
+}
+
+function normalizeWhitespace(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function normalizePathCandidate(candidate) {
+  if (!candidate) return "";
+
+  let path = String(candidate).trim().replace(/^["']|["']$/g, "").replace(/[),.;:]+$/g, "");
+  if (!path || /^https?:\/\//i.test(path)) return "";
+
+  if (path.startsWith("/")) return path;
+  if (path.startsWith("./")) path = path.slice(2);
+  if (path.startsWith("../")) path = path.replace(/^(\.\.\/)+/, "");
+  if (!path) return "";
+
+  return `/workspace/project/${path}`;
 }
 
 function guessExpectedDecision(prompt) {
@@ -601,6 +864,14 @@ function formatRuleName(value) {
     oversized_payload: "oversized_payload",
     oversized_response: "oversized_response",
     high_frequency_calls: "high_frequency_calls",
+  }[value] || value;
+}
+
+function formatInterpretationStatus(value) {
+  return {
+    supported: "готов к разбору",
+    incomplete: "недостаточно данных",
+    unknown: "вне сценария",
   }[value] || value;
 }
 
