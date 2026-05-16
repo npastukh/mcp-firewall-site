@@ -29,7 +29,7 @@ function createDemoSession() {
 }
 
 async function init() {
-  const response = await fetch("/mcp-firewall-site/data/dashboard.json");
+  const response = await fetch("data/dashboard.json");
   const data = await response.json();
   state.raw = data;
   state.filteredEvents = data.events.slice();
@@ -48,7 +48,7 @@ function renderHero(data) {
   const schemeTarget = document.getElementById("hero-scheme");
   if (schemeTarget) {
     schemeTarget.textContent =
-      data.evaluation?.summary?.best_macro_f1?.model || data.evaluation?.summary?.current_scheme || "HistGradientBoosting";
+      data.evaluation?.summary?.best_pr_auc_ovr?.model || data.evaluation?.summary?.current_scheme || "CatBoost";
   }
 }
 
@@ -189,14 +189,14 @@ function renderEvaluationSummary(summary) {
   const target = document.getElementById("evaluation-summary");
   const rows = [
     {
-      label: "Лучшая ML-модель по macro F1",
-      model: summary.best_macro_f1?.model,
-      value: summary.best_macro_f1 ? Number(summary.best_macro_f1.value).toFixed(4) : null,
+      label: "Лучшая ML-модель по PR-AUC OVR",
+      model: summary.best_pr_auc_ovr?.model,
+      value: summary.best_pr_auc_ovr ? Number(summary.best_pr_auc_ovr.value).toFixed(4) : null,
     },
     {
-      label: "Лучшая ML-модель по accuracy",
-      model: summary.best_accuracy?.model,
-      value: summary.best_accuracy ? Number(summary.best_accuracy.value).toFixed(4) : null,
+      label: "Лучшая ML-модель по balanced accuracy",
+      model: summary.best_balanced_accuracy?.model,
+      value: summary.best_balanced_accuracy ? Number(summary.best_balanced_accuracy.value).toFixed(4) : null,
     },
     {
       label: "Лучшая ML-модель по ROC-AUC OVR",
@@ -256,8 +256,8 @@ function renderModelLeaderboard(metrics) {
 
   const rows = [...metrics]
     .filter((metric) => metric.model !== "Rule-based baseline" && !String(metric.model).startsWith("Hybrid Rules +"))
-    .sort((a, b) => Number(b.macro_f1) - Number(a.macro_f1));
-  const max = Math.max(...rows.map((item) => Number(item.macro_f1)), 1);
+    .sort((a, b) => Number(b.pr_auc_ovr) - Number(a.pr_auc_ovr));
+  const max = Math.max(...rows.map((item) => Number(item.pr_auc_ovr)), 1);
   const bestModel = rows[0]?.model;
 
   rows.forEach((item, index) => {
@@ -266,10 +266,10 @@ function renderModelLeaderboard(metrics) {
     row.innerHTML = `
       <div class="bar-meta">
         <strong>${index + 1}. ${item.model}</strong>
-        <span>${Number(item.macro_f1).toFixed(4)}</span>
+        <span>${Number(item.pr_auc_ovr).toFixed(4)}</span>
       </div>
       <div class="bar-track">
-        <div class="bar-fill" style="width:${(Number(item.macro_f1) / max) * 100}%; background:${leaderboardGradient(item.model, bestModel)};"></div>
+        <div class="bar-fill" style="width:${(Number(item.pr_auc_ovr) / max) * 100}%; background:${leaderboardGradient(item.model, bestModel)};"></div>
       </div>
     `;
     target.appendChild(row);
@@ -287,37 +287,35 @@ function renderModelMetrics(metrics) {
   tbody.innerHTML = "";
 
   if (!metrics.length) {
-    tbody.innerHTML = '<tr><td colspan="7">Данные по моделям пока не загружены.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6">Данные по моделям пока не загружены.</td></tr>';
     return;
   }
 
   const bestValues = {
-    accuracy: Math.max(...metrics.map((metric) => Number(metric.accuracy))),
+    balanced_accuracy: Math.max(...metrics.map((metric) => Number(metric.balanced_accuracy))),
     macro_precision: Math.max(...metrics.map((metric) => Number(metric.macro_precision))),
     macro_recall: Math.max(...metrics.map((metric) => Number(metric.macro_recall))),
-    macro_f1: Math.max(...metrics.map((metric) => Number(metric.macro_f1))),
-    weighted_f1: Math.max(...metrics.map((metric) => Number(metric.weighted_f1))),
+    pr_auc_ovr: Math.max(...metrics.map((metric) => Number(metric.pr_auc_ovr))),
     roc_auc_ovr: Math.max(...metrics.map((metric) => Number(metric.roc_auc_ovr))),
   };
   const mlOnly = metrics.filter((metric) => metric.model !== "Rule-based baseline" && !String(metric.model).startsWith("Hybrid Rules +"));
-  const bestMlMacroF1 = Math.max(...mlOnly.map((metric) => Number(metric.macro_f1)));
-  const bestMacroF1Model = mlOnly.find((metric) => Number(metric.macro_f1) === bestMlMacroF1)?.model;
+  const bestMlPrAuc = Math.max(...mlOnly.map((metric) => Number(metric.pr_auc_ovr)));
+  const bestPrAucModel = mlOnly.find((metric) => Number(metric.pr_auc_ovr) === bestMlPrAuc)?.model;
 
   metrics.forEach((metric) => {
     const row = document.createElement("tr");
-    if (metric.model === bestMacroF1Model) {
+    if (metric.model === bestPrAucModel) {
       row.classList.add("is-best-model");
     }
     if (String(metric.model).startsWith("Hybrid Rules +")) {
       row.classList.add("is-hybrid-row");
     }
     row.innerHTML = `
-      <td>${metric.model}${metric.model === bestMacroF1Model ? '<span class="table-winner">Лучшая ML-модель</span>' : ""}${String(metric.model).startsWith("Hybrid Rules +") ? '<span class="table-deployment">рабочий контур</span>' : ""}</td>
-      <td class="${metricClass(Number(metric.accuracy), bestValues.accuracy)}">${Number(metric.accuracy).toFixed(4)}</td>
+      <td>${metric.model}${metric.model === bestPrAucModel ? '<span class="table-winner">Лучшая ML-модель</span>' : ""}${String(metric.model).startsWith("Hybrid Rules +") ? '<span class="table-deployment">рабочий контур</span>' : ""}</td>
+      <td class="${metricClass(Number(metric.balanced_accuracy), bestValues.balanced_accuracy)}">${Number(metric.balanced_accuracy).toFixed(4)}</td>
       <td class="${metricClass(Number(metric.macro_precision), bestValues.macro_precision)}">${Number(metric.macro_precision).toFixed(4)}</td>
       <td class="${metricClass(Number(metric.macro_recall), bestValues.macro_recall)}">${Number(metric.macro_recall).toFixed(4)}</td>
-      <td class="${metricClass(Number(metric.macro_f1), bestValues.macro_f1)}">${Number(metric.macro_f1).toFixed(4)}</td>
-      <td class="${metricClass(Number(metric.weighted_f1), bestValues.weighted_f1)}">${Number(metric.weighted_f1).toFixed(4)}</td>
+      <td class="${metricClass(Number(metric.pr_auc_ovr), bestValues.pr_auc_ovr)}">${Number(metric.pr_auc_ovr).toFixed(4)}</td>
       <td class="${metricClass(Number(metric.roc_auc_ovr), bestValues.roc_auc_ovr)}">${Number(metric.roc_auc_ovr).toFixed(4)}</td>
     `;
     tbody.appendChild(row);
@@ -326,7 +324,7 @@ function renderModelMetrics(metrics) {
 
 function renderConfusionMatrix(metrics, summary) {
   const target = document.getElementById("confusion-matrix");
-  const bestModel = summary.best_macro_f1?.model;
+  const bestModel = summary.best_pr_auc_ovr?.model;
   const model = metrics.find((item) => item.model === bestModel) || metrics[0];
   if (!model || !model.confusion_matrix) {
     target.innerHTML = '<p class="chart-empty">Матрица ошибок пока не загружена.</p>';
@@ -339,7 +337,7 @@ function renderConfusionMatrix(metrics, summary) {
 
   target.innerHTML = `
     <div class="matrix-title">
-      <span>Лучшая модель по macro F1</span>
+      <span>Лучшая модель по PR-AUC OVR</span>
       <strong>${model.model}</strong>
     </div>
     <div class="meta-table-wrap">
@@ -376,7 +374,7 @@ function renderConfusionMatrix(metrics, summary) {
 
 function renderScenarioErrors(errorAnalysis, summary) {
   const target = document.getElementById("scenario-errors");
-  const bestModel = summary.best_macro_f1?.model;
+  const bestModel = summary.best_pr_auc_ovr?.model;
   const model = errorAnalysis.find((item) => item.model === bestModel) || errorAnalysis[0];
   target.innerHTML = "";
 
@@ -427,11 +425,11 @@ function renderOverfittingGap(rows, summary) {
     return;
   }
 
-  const max = Math.max(...rows.map((row) => Number(row.macro_f1_gap)), 1);
-  const bestModel = summary.best_macro_f1?.model;
+  const max = Math.max(...rows.map((row) => Number(row.pr_auc_ovr_gap)), 1);
+  const bestModel = summary.best_pr_auc_ovr?.model;
 
   rows.forEach((row) => {
-    const value = Number(row.macro_f1_gap);
+    const value = Number(row.pr_auc_ovr_gap);
     const card = document.createElement("div");
     card.className = "bar-row";
     card.innerHTML = `

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCP Firewall — GLiNER + LoRA demo</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <nav class="top-nav">
+        <a class="nav-pill" href="../">Аналитика</a>
+        <a class="nav-pill" href="../demo/">Rules + ML demo</a>
+        <a class="nav-pill is-active" href="./">GLiNER + LoRA demo</a>
+      </nav>
+
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Отдельный demo-контур</p>
+          <h1>GLiNER + LoRA: проверка подозрительных MCP-запросов</h1>
+          <p class="hero-text">
+            Эта страница показывает результаты реального локального прогона через
+            <code>GLiNER2 + LoRA</code> и firewall runtime. Сайт остаётся статическим, а
+            предсказания заранее экспортируются из Python в JSON.
+          </p>
+        </div>
+        <div class="hero-panel">
+          <div class="status-pill">Static GitHub Pages + offline export</div>
+          <div class="hero-metric">
+            <span class="metric-label">Активный checkpoint</span>
+            <strong id="active-model">loading…</strong>
+          </div>
+          <div class="hero-metric">
+            <span class="metric-label">Проверочных запросов</span>
+            <strong id="request-count">0</strong>
+          </div>
+          <div class="hero-metric">
+            <span class="metric-label">Что здесь видно</span>
+            <strong>span-ы модели, MCP tools/call и итоговое allow / warn / block</strong>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Как пользоваться</p>
+              <h2>Проверка своих запросов</h2>
+            </div>
+            <p class="section-note">
+              Контур работает на заранее экспортированных результатах. Для нового запроса
+              добавь его в список запросов и перегенерируй JSON одним Python-командой.
+            </p>
+          </div>
+          <div class="guide-grid">
+            <article class="guide-card">
+              <strong>1. Выбери пример</strong>
+              <p>Можно кликнуть по готовому кейсу или вставить текст вручную в поле ниже.</p>
+            </article>
+            <article class="guide-card">
+              <strong>2. Нажми “Проверить”</strong>
+              <p>Если такой prompt уже экспортирован, страница покажет span-ы модели и итог firewall.</p>
+            </article>
+            <article class="guide-card">
+              <strong>3. Если кейс новый</strong>
+              <p>Страница подскажет команду, которой нужно обновить JSON для GitHub Pages.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Модель</p>
+              <h2>Baseline и LoRA-run</h2>
+            </div>
+            <p class="section-note">
+              Здесь собраны метрики уже посчитанных прогонов, чтобы рядом видеть реальный
+              demo-чекпоинт и его общий профиль по precision / recall / F1.
+            </p>
+          </div>
+          <div id="comparison-grid" class="comparison-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Каталог</p>
+              <h2>Подготовленные запросы</h2>
+            </div>
+            <p class="section-note">
+              Примеры покрывают <code>dotenv</code>, <code>secret_name</code>, <code>secret_value</code>,
+              <code>env_access_pattern</code>, <code>sensitive_path</code> и <code>private_url</code>.
+            </p>
+          </div>
+          <div id="examples-grid" class="examples-grid"></div>
+        </section>
+
+        <section class="workspace-grid">
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Prompt lab</p>
+                <h2>Запрос для проверки</h2>
+              </div>
+              <p class="section-note">
+                Для Pages-версии анализируются только те запросы, которые уже были экспортированы локально.
+              </p>
+            </div>
+
+            <label class="field field-wide">
+              <span>Текст запроса</span>
+              <textarea id="prompt-input" rows="7"></textarea>
+            </label>
+
+            <div class="actions-row">
+              <button id="run-check" type="button">Проверить</button>
+            </div>
+
+            <div class="preview-grid">
+              <article class="preview-card">
+                <div class="card-head">
+                  <strong>Интерпретация запроса</strong>
+                  <span id="interpretation-status" class="status-tag">ожидает запуска</span>
+                </div>
+                <pre id="interpretation-json"></pre>
+              </article>
+              <article class="preview-card">
+                <div class="card-head">
+                  <strong>Сформированный MCP tools/call</strong>
+                  <span>для firewall</span>
+                </div>
+                <pre id="mcp-request-json"></pre>
+              </article>
+            </div>
+
+            <div id="not-found-card" class="not-found-card hidden"></div>
+          </section>
+
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Политики</p>
+                <h2>Что применяет firewall</h2>
+              </div>
+            </div>
+            <div id="policy-grid" class="policy-grid"></div>
+          </section>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Prompt-level spans</p>
+              <h2>Что GLiNER + LoRA увидела в исходном запросе</h2>
+            </div>
+            <p class="section-note">
+              Это отдельный prompt-review слой: он показывает найденные чувствительные фрагменты ещё до интерпретации в MCP-вызов.
+            </p>
+          </div>
+          <div id="prompt-summary" class="summary-grid"></div>
+          <div id="prompt-spans" class="spans-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Firewall outcome</p>
+              <h2>Итог по интерпретированному MCP-вызову</h2>
+            </div>
+            <p class="section-note">
+              Здесь показан итоговый риск, source решения, сработавшие правила и span-ы внутри full-context runtime.
+            </p>
+          </div>
+          <div id="firewall-summary" class="summary-grid"></div>
+          <div class="details-grid">
+            <article class="preview-card">
+              <div class="card-head">
+                <strong>Rule matches</strong>
+                <span>policy + heuristic layer</span>
+              </div>
+              <div id="rule-matches" class="list-card"></div>
+            </article>
+            <article class="preview-card">
+              <div class="card-head">
+                <strong>Full-context spans</strong>
+                <span>по MCP event</span>
+              </div>
+              <div id="firewall-spans" class="spans-grid compact"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Schema</p>
+              <h2>Категории suspicious MCP spans</h2>
+            </div>
+          </div>
+          <div id="categories-grid" class="categories-grid"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="assets/app.js"></script>
+  </body>
+</html>

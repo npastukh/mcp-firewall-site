@@ -4,13 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MCP Firewall — аналитический дашборд</title>
-    <link rel="stylesheet" href="/mcp-firewall-site/assets/styles.css" />
+    <link rel="stylesheet" href="assets/styles.css" />
   </head>
   <body class="page-dashboard">
     <div class="page-shell">
       <nav class="top-nav reveal-fast">
         <a class="nav-pill is-active" href="./">Аналитика</a>
-        <a class="nav-pill" href="./demo/">Демо-контур</a>
+        <a class="nav-pill" href="./demo/">Rules + ML demo</a>
+        <a class="nav-pill" href="./gliner-lora/">GLiNER + LoRA demo</a>
       </nav>
 
       <header class="hero reveal">
@@ -25,14 +26,14 @@
         <div class="hero-panel">
           <div class="status-pill">Локальный стенд и отчеты</div>
           <div class="hero-metric">
-            <span class="metric-label">Лидер по macro F1</span>
-            <strong id="hero-scheme">HistGradientBoosting</strong>
+            <span class="metric-label">Лидер по PR-AUC OVR</span>
+            <strong id="hero-scheme">CatBoost</strong>
           </div>
           <div class="hero-metric">
             <span class="metric-label">Что собрано в одном месте</span>
             <strong>датасет, модели, ошибки и performance</strong>
           </div>
-          <a class="hero-link" href="./demo/">Перейти к демо-сценариям</a>
+          <a class="hero-link" href="./gliner-lora/">Перейти к GLiNER + LoRA contour</a>
         </div>
       </header>
 
@@ -119,7 +120,7 @@
               <div id="evaluation-summary" class="meta-list"></div>
             </div>
             <div class="chart-card chart-card-wide">
-              <h3>Лидерборд ML-моделей по macro F1</h3>
+              <h3>Лидерборд ML-моделей по PR-AUC OVR</h3>
               <div id="model-leaderboard" class="bar-chart"></div>
             </div>
             <div class="chart-card">
@@ -144,11 +145,10 @@
                   <thead>
                     <tr>
                       <th>Модель</th>
-                      <th>Accuracy</th>
+                      <th>Balanced Accuracy</th>
                       <th>Macro Precision</th>
                       <th>Macro Recall</th>
-                      <th>Macro F1</th>
-                      <th>Weighted F1</th>
+                      <th>PR-AUC OVR</th>
                       <th>ROC-AUC OVR</th>
                     </tr>
                   </thead>
@@ -238,6 +238,6 @@
       </article>
     </template>
 
-    <script src="/mcp-firewall-site/assets/app.js"></script>
+    <script src="assets/app.js"></script>
   </body>
 </html>

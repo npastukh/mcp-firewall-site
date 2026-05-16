@@ -14,7 +14,7 @@ function createDemoSession() {
 }
 
 async function init() {
-  const response = await fetch("/mcp-firewall-site/demo/data/dashboard.json");
+  const response = await fetch("data/dashboard.json");
   const data = await response.json();
   state.raw = data;
 
@@ -35,7 +35,7 @@ async function init() {
 
 function renderHero(data) {
   const schemeTarget = document.getElementById("hero-scheme");
-  schemeTarget.textContent = data.evaluation?.summary?.best_macro_f1?.model || "HistGradientBoosting";
+  schemeTarget.textContent = data.evaluation?.summary?.best_pr_auc_ovr?.model || "CatBoost";
 }
 
 function renderExamples(demo) {

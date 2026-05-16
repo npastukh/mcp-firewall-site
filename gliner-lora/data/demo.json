@@ -1,0 +1,2227 @@
+{
+  "meta": {
+    "generated_at": "2026-05-16T19:34:44.702813+00:00",
+    "model_path": "/Users/natalia/Documents/New project/mcp_firewall_prototype/artifacts/gliner2_mcp_adapter_large_v2/best",
+    "mode": "static-precomputed-pages-demo",
+    "request_count": 12,
+    "update_command": "cd /Users/natalia/Documents/New\\ project/mcp_firewall_prototype && PYTHONPATH=src .venv/bin/python -m mcp_firewall.export_gliner_lora_demo",
+    "requests_file": "/Users/natalia/Documents/New project/mcp_firewall_prototype/data/gliner_lora_demo_requests.json",
+    "site_output": "/Users/natalia/Documents/New project/mcp_firewall_github_pages_site/gliner-lora/data/demo.json"
+  },
+  "policy": {
+    "allowed_transports": [
+      "stdio",
+      "streamable_http"
+    ],
+    "allowed_clients": [
+      "agent-1",
+      "agent-2",
+      "agent-3",
+      "agent-4",
+      "agent-5"
+    ],
+    "client_tool_allowlist": {
+      "agent-1": [
+        "filesystem.read_file",
+        "filesystem.search",
+        "web.fetch"
+      ],
+      "agent-2": [
+        "filesystem.read_file",
+        "filesystem.search",
+        "web.fetch"
+      ],
+      "agent-3": [
+        "filesystem.read_file",
+        "filesystem.search",
+        "web.fetch"
+      ],
+      "agent-4": [
+        "filesystem.read_file",
+        "filesystem.search",
+        "web.fetch"
+      ],
+      "agent-5": [
+        "filesystem.read_file",
+        "filesystem.search",
+        "web.fetch"
+      ]
+    },
+    "tool_server_map": {
+      "filesystem.read_file": "filesystem-server",
+      "filesystem.search": "filesystem-server",
+      "web.fetch": "http-server"
+    },
+    "blocked_paths": [
+      "/etc/passwd",
+      "/.ssh",
+      "/secrets",
+      "/var/run/secrets"
+    ],
+    "blocked_hosts": [
+      "169.254.169.254",
+      "127.0.0.1",
+      "localhost"
+    ],
+    "safe_file_roots": [
+      "/workspace",
+      "/tmp/demo-data"
+    ],
+    "max_payload_size": 16000,
+    "max_response_size": 8000,
+    "warn_risk_threshold": 0.4,
+    "block_risk_threshold": 0.75,
+    "high_frequency_threshold": 8,
+    "sensitive_keywords": [
+      "token",
+      "secret",
+      "password",
+      "key",
+      "credential"
+    ]
+  },
+  "categories": [
+    {
+      "name": "dotenv",
+      "description": "Имена .env-файлов и производных окружений."
+    },
+    {
+      "name": "env_access_pattern",
+      "description": "Доступ к переменным окружения через process.env, os.environ, getenv."
+    },
+    {
+      "name": "private_url",
+      "description": "Внутренние или чувствительные URL, включая token/key в query."
+    },
+    {
+      "name": "secret_name",
+      "description": "Имена секретов и переменных вроде GITHUB_TOKEN или DB_PASSWORD."
+    },
+    {
+      "name": "secret_value",
+      "description": "Сами token-like или secret-like значения."
+    },
+    {
+      "name": "sensitive_path",
+      "description": "Пути к секретным конфигам, .env и чувствительным артефактам."
+    }
+  ],
+  "model_comparison": [
+    {
+      "label": "Baseline gliner2-large-v1",
+      "threshold": 0.5,
+      "precision": 0.5214007782101168,
+      "recall": 0.5583333333333333,
+      "f1": 0.5392354124748491,
+      "tp": 134,
+      "fp": 123,
+      "fn": 106
+    },
+    {
+      "label": "LoRA v1",
+      "threshold": 0.5,
+      "precision": 0.3200589970501475,
+      "recall": 0.9041666666666667,
+      "f1": 0.4727668845315905,
+      "tp": 217,
+      "fp": 461,
+      "fn": 23
+    },
+    {
+      "label": "LoRA v2",
+      "threshold": 0.5,
+      "precision": 0.2946666666666667,
+      "recall": 0.9208333333333333,
+      "f1": 0.4464646464646465,
+      "tp": 221,
+      "fp": 529,
+      "fn": 19
+    }
+  ],
+  "cases": [
+    {
+      "id": "safe-readme",
+      "title": "Безопасное чтение README",
+      "prompt": "Прочитай файл /workspace/project/README.md",
+      "normalized_prompt": "Прочитай файл /workspace/project/README.md",
+      "notes": "Ожидаем безопасный allow-сценарий без чувствительных сущностей.",
+      "prompt_analysis": {
+        "context_text": "Прочитай файл /workspace/project/README.md",
+        "max_confidence": 0.9911,
+        "detected_labels": [
+          "dotenv",
+          "private_url",
+          "secret_name",
+          "sensitive_path"
+        ],
+        "entity_count": 4,
+        "sensitive_entity_count": 3,
+        "spans": [
+          {
+            "label": "dotenv",
+            "text": "/workspace/project/README.md",
+            "score": 0.6927,
+            "start_char": 14,
+            "end_char": 42
+          },
+          {
+            "label": "private_url",
+            "text": "/workspace/project/README.md",
+            "score": 0.9136,
+            "start_char": 14,
+            "end_char": 42
+          },
+          {
+            "label": "secret_name",
+            "text": "/workspace/project/README.md",
+            "score": 0.5901,
+            "start_char": 14,
+            "end_char": 42
+          },
+          {
+            "label": "sensitive_path",
+            "text": "/workspace/project/README.md",
+            "score": 0.9911,
+            "start_char": 14,
+            "end_char": 42
+          }
+        ]
+      },
+      "interpretation": {
+        "status": "supported",
+        "intent": "read_file",
+        "confidence": 0.92,
+        "tool_name": "filesystem.read_file",
+        "server_id": "filesystem-server",
+        "arguments": {
+          "path": "/workspace/project/README.md"
+        },
+        "message": "Запрос интерпретирован как чтение файла через filesystem.read_file."
+      },
+      "mcp_request": {
+        "jsonrpc": "2.0",
+        "id": "gliner-lora-demo",
+        "method": "tools/call",
+        "params": {
+          "name": "filesystem.read_file",
+          "arguments": {
+            "path": "/workspace/project/README.md"
+          }
+        }
+      },
+      "firewall": {
+        "risk_score": 0.65,
+        "decision": "block",
+        "rationale": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, sensitive_path",
+        "features": {
+          "transport_type": "stdio",
+          "jsonrpc_method": "tools/call",
+          "tool_name": "filesystem.read_file",
+          "arg_count": 1,
+          "payload_size": 924,
+          "response_size": 0,
+          "response_time_ms": 0,
+          "is_error": false,
+          "tools_called_last_session": 0,
+          "failed_calls_last_session": 0,
+          "sensitive_path_flag": false,
+          "external_url_flag": false,
+          "private_ip_flag": false,
+          "sensitive_keyword_flag": false,
+          "repeated_tool_flag": false,
+          "full_context_sensitive_flag": true,
+          "full_context_high_risk_flag": true,
+          "full_context_entity_count": 7,
+          "full_context_sensitive_entity_count": 2,
+          "full_context_max_confidence": 0.9988
+        },
+        "rule_matches": [
+          {
+            "name": "full_context_sensitive_request",
+            "severity": "block",
+            "reason": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, sensitive_path"
+          }
+        ],
+        "decision_source": {
+          "source": "rule-based",
+          "detail": "full_context_sensitive_request"
+        },
+        "privacy_assessment": {
+          "context_text": "client_id = agent-1 server_id = filesystem-server transport = stdio method = tools/call tool_name = filesystem.read_file path = /workspace/project/README.md",
+          "max_confidence": 0.9988,
+          "detected_labels": [
+            "dotenv",
+            "env_access_pattern",
+            "secret_name",
+            "secret_value",
+            "sensitive_path"
+          ],
+          "entity_count": 7,
+          "sensitive_entity_count": 2,
+          "spans": [
+            {
+              "label": "secret_value",
+              "text": "agent-1",
+              "score": 0.9988,
+              "start_token": 2,
+              "end_token": 2
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "transport",
+              "score": 0.5288,
+              "start_token": 6,
+              "end_token": 6
+            },
+            {
+              "label": "dotenv",
+              "text": "stdio",
+              "score": 0.6334,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "stdio",
+              "score": 0.5881,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "tools/call",
+              "score": 0.8694,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "secret_name",
+              "text": "filesystem.read_file",
+              "score": 0.9939,
+              "start_token": 14,
+              "end_token": 14
+            },
+            {
+              "label": "sensitive_path",
+              "text": "/workspace/project/README.md",
+              "score": 0.9973,
+              "start_token": 17,
+              "end_token": 17
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "dotenv-read",
+      "title": "Чтение .env файла",
+      "prompt": "Прочитай файл /workspace/project/.env",
+      "normalized_prompt": "Прочитай файл /workspace/project/.env",
+      "notes": "Проверка детекции dotenv и чувствительного path.",
+      "prompt_analysis": {
+        "context_text": "Прочитай файл /workspace/project/.env",
+        "max_confidence": 0.9729,
+        "detected_labels": [
+          "dotenv",
+          "private_url",
+          "secret_name",
+          "sensitive_path"
+        ],
+        "entity_count": 4,
+        "sensitive_entity_count": 3,
+        "spans": [
+          {
+            "label": "dotenv",
+            "text": "/workspace/project/.env",
+            "score": 0.9506,
+            "start_char": 14,
+            "end_char": 37
+          },
+          {
+            "label": "private_url",
+            "text": "/workspace/project/.env",
+            "score": 0.7598,
+            "start_char": 14,
+            "end_char": 37
+          },
+          {
+            "label": "secret_name",
+            "text": "/workspace/project/.env",
+            "score": 0.5758,
+            "start_char": 14,
+            "end_char": 37
+          },
+          {
+            "label": "sensitive_path",
+            "text": "/workspace/project/.env",
+            "score": 0.9729,
+            "start_char": 14,
+            "end_char": 37
+          }
+        ]
+      },
+      "interpretation": {
+        "status": "supported",
+        "intent": "read_file",
+        "confidence": 0.92,
+        "tool_name": "filesystem.read_file",
+        "server_id": "filesystem-server",
+        "arguments": {
+          "path": "/workspace/project/.env"
+        },
+        "message": "Запрос интерпретирован как чтение файла через filesystem.read_file."
+      },
+      "mcp_request": {
+        "jsonrpc": "2.0",
+        "id": "gliner-lora-demo",
+        "method": "tools/call",
+        "params": {
+          "name": "filesystem.read_file",
+          "arguments": {
+            "path": "/workspace/project/.env"
+          }
+        }
+      },
+      "firewall": {
+        "risk_score": 0.65,
+        "decision": "block",
+        "rationale": "Full-context privacy evaluator detected high-risk sensitive entities: sensitive_path",
+        "features": {
+          "transport_type": "stdio",
+          "jsonrpc_method": "tools/call",
+          "tool_name": "filesystem.read_file",
+          "arg_count": 1,
+          "payload_size": 804,
+          "response_size": 0,
+          "response_time_ms": 0,
+          "is_error": false,
+          "tools_called_last_session": 0,
+          "failed_calls_last_session": 0,
+          "sensitive_path_flag": false,
+          "external_url_flag": false,
+          "private_ip_flag": false,
+          "sensitive_keyword_flag": false,
+          "repeated_tool_flag": false,
+          "full_context_sensitive_flag": true,
+          "full_context_high_risk_flag": true,
+          "full_context_entity_count": 6,
+          "full_context_sensitive_entity_count": 1,
+          "full_context_max_confidence": 0.9944
+        },
+        "rule_matches": [
+          {
+            "name": "full_context_sensitive_request",
+            "severity": "block",
+            "reason": "Full-context privacy evaluator detected high-risk sensitive entities: sensitive_path"
+          }
+        ],
+        "decision_source": {
+          "source": "rule-based",
+          "detail": "full_context_sensitive_request"
+        },
+        "privacy_assessment": {
+          "context_text": "client_id = agent-1 server_id = filesystem-server transport = stdio method = tools/call tool_name = filesystem.read_file path = /workspace/project/.env",
+          "max_confidence": 0.9944,
+          "detected_labels": [
+            "env_access_pattern",
+            "secret_name",
+            "secret_value",
+            "sensitive_path"
+          ],
+          "entity_count": 6,
+          "sensitive_entity_count": 1,
+          "spans": [
+            {
+              "label": "secret_value",
+              "text": "agent-1",
+              "score": 0.9944,
+              "start_token": 2,
+              "end_token": 2
+            },
+            {
+              "label": "secret_name",
+              "text": "filesystem-server",
+              "score": 0.5228,
+              "start_token": 5,
+              "end_token": 5
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "tools/call",
+              "score": 0.8466,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "secret_name",
+              "text": "tools/call",
+              "score": 0.6532,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "secret_name",
+              "text": "filesystem.read_file",
+              "score": 0.9851,
+              "start_token": 14,
+              "end_token": 14
+            },
+            {
+              "label": "sensitive_path",
+              "text": "/workspace/project/.env",
+              "score": 0.9894,
+              "start_token": 17,
+              "end_token": 17
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "search-secret-name",
+      "title": "Поиск secret name",
+      "prompt": "Найди GITHUB_TOKEN и REDIS_PASSWORD в репозитории",
+      "normalized_prompt": "Найди GITHUB_TOKEN и REDIS_PASSWORD в репозитории",
+      "notes": "Проверка secret_name в поисковом запросе.",
+      "prompt_analysis": {
+        "context_text": "Найди GITHUB_TOKEN и REDIS_PASSWORD в репозитории",
+        "max_confidence": 1.0,
+        "detected_labels": [
+          "dotenv",
+          "env_access_pattern",
+          "private_url",
+          "secret_name",
+          "sensitive_path"
+        ],
+        "entity_count": 6,
+        "sensitive_entity_count": 3,
+        "spans": [
+          {
+            "label": "secret_name",
+            "text": "GITHUB_TOKEN",
+            "score": 0.9989,
+            "start_char": 6,
+            "end_char": 18
+          },
+          {
+            "label": "secret_name",
+            "text": "REDIS_PASSWORD",
+            "score": 1.0,
+            "start_char": 21,
+            "end_char": 35
+          },
+          {
+            "label": "dotenv",
+            "text": "репозитории",
+            "score": 0.599,
+            "start_char": 38,
+            "end_char": 49
+          },
+          {
+            "label": "env_access_pattern",
+            "text": "репозитории",
+            "score": 0.9719,
+            "start_char": 38,
+            "end_char": 49
+          },
+          {
+            "label": "private_url",
+            "text": "репозитории",
+            "score": 0.5144,
+            "start_char": 38,
+            "end_char": 49
+          },
+          {
+            "label": "sensitive_path",
+            "text": "репозитории",
+            "score": 0.9401,
+            "start_char": 38,
+            "end_char": 49
+          }
+        ]
+      },
+      "interpretation": {
+        "status": "supported",
+        "intent": "search",
+        "confidence": 0.83,
+        "tool_name": "filesystem.search",
+        "server_id": "filesystem-server",
+        "arguments": {
+          "path": "/workspace/project",
+          "query": "GITHUB_TOKEN и REDIS_PASSWORD в репозитории"
+        },
+        "message": "Запрос интерпретирован как поиск по файловому дереву."
+      },
+      "mcp_request": {
+        "jsonrpc": "2.0",
+        "id": "gliner-lora-demo",
+        "method": "tools/call",
+        "params": {
+          "name": "filesystem.search",
+          "arguments": {
+            "path": "/workspace/project",
+            "query": "GITHUB_TOKEN и REDIS_PASSWORD в репозитории"
+          }
+        }
+      },
+      "firewall": {
+        "risk_score": 0.85,
+        "decision": "block",
+        "rationale": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, private_url, sensitive_path",
+        "features": {
+          "transport_type": "stdio",
+          "jsonrpc_method": "tools/call",
+          "tool_name": "filesystem.search",
+          "arg_count": 2,
+          "payload_size": 1248,
+          "response_size": 0,
+          "response_time_ms": 0,
+          "is_error": false,
+          "tools_called_last_session": 0,
+          "failed_calls_last_session": 0,
+          "sensitive_path_flag": false,
+          "external_url_flag": false,
+          "private_ip_flag": false,
+          "sensitive_keyword_flag": true,
+          "repeated_tool_flag": false,
+          "full_context_sensitive_flag": true,
+          "full_context_high_risk_flag": true,
+          "full_context_entity_count": 8,
+          "full_context_sensitive_entity_count": 3,
+          "full_context_max_confidence": 0.9998
+        },
+        "rule_matches": [
+          {
+            "name": "full_context_sensitive_request",
+            "severity": "block",
+            "reason": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, private_url, sensitive_path"
+          }
+        ],
+        "decision_source": {
+          "source": "rule-based",
+          "detail": "full_context_sensitive_request"
+        },
+        "privacy_assessment": {
+          "context_text": "client_id = agent-1 server_id = filesystem-server transport = stdio method = tools/call tool_name = filesystem.search path = /workspace/project query = GITHUB_TOKEN и REDIS_PASSWORD в репозитории",
+          "max_confidence": 0.9998,
+          "detected_labels": [
+            "dotenv",
+            "env_access_pattern",
+            "private_url",
+            "secret_name",
+            "secret_value",
+            "sensitive_path"
+          ],
+          "entity_count": 8,
+          "sensitive_entity_count": 3,
+          "spans": [
+            {
+              "label": "dotenv",
+              "text": "stdio",
+              "score": 0.8156,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "tools/call",
+              "score": 0.9201,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "filesystem.search",
+              "score": 0.5524,
+              "start_token": 14,
+              "end_token": 14
+            },
+            {
+              "label": "secret_name",
+              "text": "filesystem.search",
+              "score": 0.9259,
+              "start_token": 14,
+              "end_token": 14
+            },
+            {
+              "label": "sensitive_path",
+              "text": "/workspace/project",
+              "score": 0.9981,
+              "start_token": 17,
+              "end_token": 17
+            },
+            {
+              "label": "private_url",
+              "text": "GITHUB_TOKEN",
+              "score": 0.6447,
+              "start_token": 20,
+              "end_token": 20
+            },
+            {
+              "label": "secret_value",
+              "text": "GITHUB_TOKEN",
+              "score": 0.7075,
+              "start_token": 20,
+              "end_token": 20
+            },
+            {
+              "label": "secret_value",
+              "text": "REDIS_PASSWORD",
+              "score": 0.9998,
+              "start_token": 22,
+              "end_token": 22
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "search-dotenv",
+      "title": "Поиск dotenv файла",
+      "prompt": "Найди .env.production и .env.staging в проекте",
+      "normalized_prompt": "Найди .env.production и .env.staging в проекте",
+      "notes": "Проверка детекции dotenv по имени файла.",
+      "prompt_analysis": {
+        "context_text": "Найди .env.production и .env.staging в проекте",
+        "max_confidence": 0.9998,
+        "detected_labels": [
+          "dotenv",
+          "env_access_pattern",
+          "secret_name",
+          "sensitive_path"
+        ],
+        "entity_count": 7,
+        "sensitive_entity_count": 4,
+        "spans": [
+          {
+            "label": "dotenv",
+            "text": ".env.production",
+            "score": 0.9982,
+            "start_char": 6,
+            "end_char": 21
+          },
+          {
+            "label": "env_access_pattern",
+            "text": ".env.production",
+            "score": 0.9952,
+            "start_char": 6,
+            "end_char": 21
+          },
+          {
+            "label": "sensitive_path",
+            "text": ".env.production",
+            "score": 0.8954,
+            "start_char": 6,
+            "end_char": 21
+          },
+          {
+            "label": "dotenv",
+            "text": ".env.staging",
+            "score": 0.9998,
+            "start_char": 24,
+            "end_char": 36
+          },
+          {
+            "label": "env_access_pattern",
+            "text": ".env.staging",
+            "score": 0.5465,
+            "start_char": 24,
+            "end_char": 36
+          },
+          {
+            "label": "sensitive_path",
+            "text": ".env.staging",
+            "score": 0.7574,
+            "start_char": 24,
+            "end_char": 36
+          },
+          {
+            "label": "secret_name",
+            "text": "проекте",
+            "score": 0.7829,
+            "start_char": 39,
+            "end_char": 46
+          }
+        ]
+      },
+      "interpretation": {
+        "status": "supported",
+        "intent": "search",
+        "confidence": 0.83,
+        "tool_name": "filesystem.search",
+        "server_id": "filesystem-server",
+        "arguments": {
+          "path": "/workspace/project/env.production",
+          "query": ".env.production и .env.staging в проекте"
+        },
+        "message": "Запрос интерпретирован как поиск по файловому дереву."
+      },
+      "mcp_request": {
+        "jsonrpc": "2.0",
+        "id": "gliner-lora-demo",
+        "method": "tools/call",
+        "params": {
+          "name": "filesystem.search",
+          "arguments": {
+            "path": "/workspace/project/env.production",
+            "query": ".env.production и .env.staging в проекте"
+          }
+        }
+      },
+      "firewall": {
+        "risk_score": 0.65,
+        "decision": "block",
+        "rationale": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, private_url, sensitive_path",
+        "features": {
+          "transport_type": "stdio",
+          "jsonrpc_method": "tools/call",
+          "tool_name": "filesystem.search",
+          "arg_count": 2,
+          "payload_size": 1266,
+          "response_size": 0,
+          "response_time_ms": 0,
+          "is_error": false,
+          "tools_called_last_session": 0,
+          "failed_calls_last_session": 0,
+          "sensitive_path_flag": false,
+          "external_url_flag": false,
+          "private_ip_flag": false,
+          "sensitive_keyword_flag": false,
+          "repeated_tool_flag": false,
+          "full_context_sensitive_flag": true,
+          "full_context_high_risk_flag": true,
+          "full_context_entity_count": 10,
+          "full_context_sensitive_entity_count": 4,
+          "full_context_max_confidence": 0.9954
+        },
+        "rule_matches": [
+          {
+            "name": "full_context_sensitive_request",
+            "severity": "block",
+            "reason": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, private_url, sensitive_path"
+          }
+        ],
+        "decision_source": {
+          "source": "rule-based",
+          "detail": "full_context_sensitive_request"
+        },
+        "privacy_assessment": {
+          "context_text": "client_id = agent-1 server_id = filesystem-server transport = stdio method = tools/call tool_name = filesystem.search path = /workspace/project/env.production query = .env.production и .env.staging в проекте",
+          "max_confidence": 0.9954,
+          "detected_labels": [
+            "dotenv",
+            "env_access_pattern",
+            "private_url",
+            "secret_name",
+            "secret_value",
+            "sensitive_path"
+          ],
+          "entity_count": 10,
+          "sensitive_entity_count": 4,
+          "spans": [
+            {
+              "label": "secret_value",
+              "text": "agent-1",
+              "score": 0.9937,
+              "start_token": 2,
+              "end_token": 2
+            },
+            {
+              "label": "secret_name",
+              "text": "filesystem-server",
+              "score": 0.7902,
+              "start_token": 5,
+              "end_token": 5
+            },
+            {
+              "label": "private_url",
+              "text": "stdio",
+              "score": 0.5359,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "secret_name",
+              "text": "tools/call",
+              "score": 0.7139,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "secret_name",
+              "text": "filesystem.search",
+              "score": 0.987,
+              "start_token": 14,
+              "end_token": 14
+            },
+            {
+              "label": "sensitive_path",
+              "text": "/workspace/project/env.production",
+              "score": 0.9954,
+              "start_token": 17,
+              "end_token": 17
+            },
+            {
+              "label": "dotenv",
+              "text": ".env.production",
+              "score": 0.7712,
+              "start_token": 20,
+              "end_token": 20
+            },
+            {
+              "label": "env_access_pattern",
+              "text": ".env.production",
+              "score": 0.9319,
+              "start_token": 20,
+              "end_token": 20
+            },
+            {
+              "label": "dotenv",
+              "text": ".env.staging",
+              "score": 0.8937,
+              "start_token": 22,
+              "end_token": 22
+            },
+            {
+              "label": "env_access_pattern",
+              "text": ".env.staging",
+              "score": 0.9764,
+              "start_token": 22,
+              "end_token": 22
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "search-secret-value",
+      "title": "Поиск значения токена",
+      "prompt": "Найди токен sk-proj-abc123xyz и bearer value ghp_demo987",
+      "normalized_prompt": "Найди токен sk-proj-abc123xyz и bearer value ghp_demo987",
+      "notes": "Проверка secret_value на token-like строках.",
+      "prompt_analysis": {
+        "context_text": "Найди токен sk-proj-abc123xyz и bearer value ghp_demo987",
+        "max_confidence": 0.9998,
+        "detected_labels": [
+          "dotenv",
+          "env_access_pattern",
+          "secret_name",
+          "secret_value",
+          "sensitive_path"
+        ],
+        "entity_count": 5,
+        "sensitive_entity_count": 2,
+        "spans": [
+          {
+            "label": "dotenv",
+            "text": "sk-proj-abc123xyz",
+            "score": 0.9997,
+            "start_char": 12,
+            "end_char": 29
+          },
+          {
+            "label": "env_access_pattern",
+            "text": "sk-proj-abc123xyz",
+            "score": 0.998,
+            "start_char": 12,
+            "end_char": 29
+          },
+          {
+            "label": "sensitive_path",
+            "text": "sk-proj-abc123xyz",
+            "score": 0.9952,
+            "start_char": 12,
+            "end_char": 29
+          },
+          {
+            "label": "secret_name",
+            "text": "ghp_demo987",
+            "score": 0.9971,
+            "start_char": 45,
+            "end_char": 56
+          },
+          {
+            "label": "secret_value",
+            "text": "ghp_demo987",
+            "score": 0.9998,
+            "start_char": 45,
+            "end_char": 56
+          }
+        ]
+      },
+      "interpretation": {
+        "status": "supported",
+        "intent": "search",
+        "confidence": 0.83,
+        "tool_name": "filesystem.search",
+        "server_id": "filesystem-server",
+        "arguments": {
+          "path": "/workspace/project",
+          "query": "токен sk-proj-abc123xyz и bearer value ghp_demo987"
+        },
+        "message": "Запрос интерпретирован как поиск по файловому дереву."
+      },
+      "mcp_request": {
+        "jsonrpc": "2.0",
+        "id": "gliner-lora-demo",
+        "method": "tools/call",
+        "params": {
+          "name": "filesystem.search",
+          "arguments": {
+            "path": "/workspace/project",
+            "query": "токен sk-proj-abc123xyz и bearer value ghp_demo987"
+          }
+        }
+      },
+      "firewall": {
+        "risk_score": 0.65,
+        "decision": "block",
+        "rationale": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, sensitive_path",
+        "features": {
+          "transport_type": "stdio",
+          "jsonrpc_method": "tools/call",
+          "tool_name": "filesystem.search",
+          "arg_count": 2,
+          "payload_size": 1416,
+          "response_size": 0,
+          "response_time_ms": 0,
+          "is_error": false,
+          "tools_called_last_session": 0,
+          "failed_calls_last_session": 0,
+          "sensitive_path_flag": false,
+          "external_url_flag": false,
+          "private_ip_flag": false,
+          "sensitive_keyword_flag": false,
+          "repeated_tool_flag": false,
+          "full_context_sensitive_flag": true,
+          "full_context_high_risk_flag": true,
+          "full_context_entity_count": 7,
+          "full_context_sensitive_entity_count": 3,
+          "full_context_max_confidence": 0.9999
+        },
+        "rule_matches": [
+          {
+            "name": "full_context_sensitive_request",
+            "severity": "block",
+            "reason": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, sensitive_path"
+          }
+        ],
+        "decision_source": {
+          "source": "rule-based",
+          "detail": "full_context_sensitive_request"
+        },
+        "privacy_assessment": {
+          "context_text": "client_id = agent-1 server_id = filesystem-server transport = stdio method = tools/call tool_name = filesystem.search path = /workspace/project query = токен sk-proj-abc123xyz и bearer value ghp_demo987",
+          "max_confidence": 0.9999,
+          "detected_labels": [
+            "dotenv",
+            "env_access_pattern",
+            "secret_name",
+            "secret_value",
+            "sensitive_path"
+          ],
+          "entity_count": 7,
+          "sensitive_entity_count": 3,
+          "spans": [
+            {
+              "label": "dotenv",
+              "text": "agent-1",
+              "score": 0.5833,
+              "start_token": 2,
+              "end_token": 2
+            },
+            {
+              "label": "dotenv",
+              "text": "stdio",
+              "score": 0.7784,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "tools/call",
+              "score": 0.8874,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "filesystem.search",
+              "score": 0.7259,
+              "start_token": 14,
+              "end_token": 14
+            },
+            {
+              "label": "sensitive_path",
+              "text": "/workspace/project",
+              "score": 0.9985,
+              "start_token": 17,
+              "end_token": 17
+            },
+            {
+              "label": "secret_name",
+              "text": "sk-proj-abc123xyz",
+              "score": 0.9977,
+              "start_token": 21,
+              "end_token": 21
+            },
+            {
+              "label": "secret_value",
+              "text": "ghp_demo987",
+              "score": 0.9999,
+              "start_token": 25,
+              "end_token": 25
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "search-env-access",
+      "title": "Поиск env access pattern",
+      "prompt": "Проверь где используется process.env.OPENAI_API_KEY и os.environ[\"DB_PASSWORD\"]",
+      "normalized_prompt": "Проверь где используется process.env.OPENAI_API_KEY и os.environ[\"DB_PASSWORD\"]",
+      "notes": "Проверка env_access_pattern для JS и Python.",
+      "prompt_analysis": {
+        "context_text": "Проверь где используется process.env.OPENAI_API_KEY и os.environ[\"DB_PASSWORD\"]",
+        "max_confidence": 0.9971,
+        "detected_labels": [
+          "dotenv",
+          "env_access_pattern",
+          "private_url",
+          "sensitive_path"
+        ],
+        "entity_count": 6,
+        "sensitive_entity_count": 5,
+        "spans": [
+          {
+            "label": "dotenv",
+            "text": "process.env.OPENAI_API_KEY",
+            "score": 0.996,
+            "start_char": 25,
+            "end_char": 51
+          },
+          {
+            "label": "env_access_pattern",
+            "text": "process.env.OPENAI_API_KEY",
+            "score": 0.9971,
+            "start_char": 25,
+            "end_char": 51
+          },
+          {
+            "label": "sensitive_path",
+            "text": "process.env.OPENAI_API_KEY",
+            "score": 0.9514,
+            "start_char": 25,
+            "end_char": 51
+          },
+          {
+            "label": "dotenv",
+            "text": "os.environ[\"DB_PASSWORD\"]",
+            "score": 0.9631,
+            "start_char": 54,
+            "end_char": 79
+          },
+          {
+            "label": "private_url",
+            "text": "os.environ[\"DB_PASSWORD\"]",
+            "score": 0.8715,
+            "start_char": 54,
+            "end_char": 79
+          },
+          {
+            "label": "sensitive_path",
+            "text": "os.environ[\"DB_PASSWORD\"]",
+            "score": 0.6293,
+            "start_char": 54,
+            "end_char": 79
+          }
+        ]
+      },
+      "interpretation": {
+        "status": "supported",
+        "intent": "web_fetch",
+        "confidence": 0.95,
+        "tool_name": "web.fetch",
+        "server_id": "http-server",
+        "arguments": {
+          "url": "https://process.env.OPENAI"
+        },
+        "message": "Запрос интерпретирован как web-fetch вызов."
+      },
+      "mcp_request": {
+        "jsonrpc": "2.0",
+        "id": "gliner-lora-demo",
+        "method": "tools/call",
+        "params": {
+          "name": "web.fetch",
+          "arguments": {
+            "url": "https://process.env.OPENAI"
+          }
+        }
+      },
+      "firewall": {
+        "risk_score": 0.65,
+        "decision": "block",
+        "rationale": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, private_url, sensitive_path",
+        "features": {
+          "transport_type": "stdio",
+          "jsonrpc_method": "tools/call",
+          "tool_name": "web.fetch",
+          "arg_count": 1,
+          "payload_size": 1578,
+          "response_size": 0,
+          "response_time_ms": 0,
+          "is_error": false,
+          "tools_called_last_session": 0,
+          "failed_calls_last_session": 0,
+          "sensitive_path_flag": false,
+          "external_url_flag": true,
+          "private_ip_flag": false,
+          "sensitive_keyword_flag": false,
+          "repeated_tool_flag": false,
+          "full_context_sensitive_flag": true,
+          "full_context_high_risk_flag": true,
+          "full_context_entity_count": 6,
+          "full_context_sensitive_entity_count": 3,
+          "full_context_max_confidence": 0.9998
+        },
+        "rule_matches": [
+          {
+            "name": "full_context_sensitive_request",
+            "severity": "block",
+            "reason": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, private_url, sensitive_path"
+          }
+        ],
+        "decision_source": {
+          "source": "rule-based",
+          "detail": "full_context_sensitive_request"
+        },
+        "privacy_assessment": {
+          "context_text": "client_id = agent-1 server_id = http-server transport = stdio method = tools/call tool_name = web.fetch url = https://process.env.OPENAI",
+          "max_confidence": 0.9998,
+          "detected_labels": [
+            "dotenv",
+            "env_access_pattern",
+            "private_url",
+            "secret_name",
+            "secret_value",
+            "sensitive_path"
+          ],
+          "entity_count": 6,
+          "sensitive_entity_count": 3,
+          "spans": [
+            {
+              "label": "secret_value",
+              "text": "agent-1",
+              "score": 0.9998,
+              "start_token": 2,
+              "end_token": 2
+            },
+            {
+              "label": "dotenv",
+              "text": "stdio",
+              "score": 0.8759,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "tools/call",
+              "score": 0.9631,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "sensitive_path",
+              "text": "tools/call",
+              "score": 0.8391,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "secret_name",
+              "text": "web.fetch",
+              "score": 0.9986,
+              "start_token": 14,
+              "end_token": 14
+            },
+            {
+              "label": "private_url",
+              "text": "https://process.env.OPENAI.",
+              "score": 0.9749,
+              "start_token": 17,
+              "end_token": 17
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "sensitive-path-read",
+      "title": "Чтение секретного конфига",
+      "prompt": "Прочитай файл /workspace/project/config/prod-secrets.yaml",
+      "normalized_prompt": "Прочитай файл /workspace/project/config/prod-secrets.yaml",
+      "notes": "Проверка sensitive_path без generic URL.",
+      "prompt_analysis": {
+        "context_text": "Прочитай файл /workspace/project/config/prod-secrets.yaml",
+        "max_confidence": 0.0,
+        "detected_labels": [],
+        "entity_count": 0,
+        "sensitive_entity_count": 0,
+        "spans": []
+      },
+      "interpretation": {
+        "status": "supported",
+        "intent": "read_file",
+        "confidence": 0.92,
+        "tool_name": "filesystem.read_file",
+        "server_id": "filesystem-server",
+        "arguments": {
+          "path": "/workspace/project/config/prod-secrets.yaml"
+        },
+        "message": "Запрос интерпретирован как чтение файла через filesystem.read_file."
+      },
+      "mcp_request": {
+        "jsonrpc": "2.0",
+        "id": "gliner-lora-demo",
+        "method": "tools/call",
+        "params": {
+          "name": "filesystem.read_file",
+          "arguments": {
+            "path": "/workspace/project/config/prod-secrets.yaml"
+          }
+        }
+      },
+      "firewall": {
+        "risk_score": 0.85,
+        "decision": "block",
+        "rationale": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv",
+        "features": {
+          "transport_type": "stdio",
+          "jsonrpc_method": "tools/call",
+          "tool_name": "filesystem.read_file",
+          "arg_count": 1,
+          "payload_size": 1284,
+          "response_size": 0,
+          "response_time_ms": 0,
+          "is_error": false,
+          "tools_called_last_session": 0,
+          "failed_calls_last_session": 0,
+          "sensitive_path_flag": false,
+          "external_url_flag": false,
+          "private_ip_flag": false,
+          "sensitive_keyword_flag": true,
+          "repeated_tool_flag": false,
+          "full_context_sensitive_flag": true,
+          "full_context_high_risk_flag": true,
+          "full_context_entity_count": 6,
+          "full_context_sensitive_entity_count": 1,
+          "full_context_max_confidence": 0.9979
+        },
+        "rule_matches": [
+          {
+            "name": "full_context_sensitive_request",
+            "severity": "block",
+            "reason": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv"
+          }
+        ],
+        "decision_source": {
+          "source": "rule-based",
+          "detail": "full_context_sensitive_request"
+        },
+        "privacy_assessment": {
+          "context_text": "client_id = agent-1 server_id = filesystem-server transport = stdio method = tools/call tool_name = filesystem.read_file path = /workspace/project/config/prod-secrets.yaml",
+          "max_confidence": 0.9979,
+          "detected_labels": [
+            "dotenv",
+            "env_access_pattern",
+            "secret_name",
+            "secret_value"
+          ],
+          "entity_count": 6,
+          "sensitive_entity_count": 1,
+          "spans": [
+            {
+              "label": "secret_value",
+              "text": "agent-1",
+              "score": 0.9979,
+              "start_token": 2,
+              "end_token": 2
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "transport",
+              "score": 0.5154,
+              "start_token": 6,
+              "end_token": 6
+            },
+            {
+              "label": "dotenv",
+              "text": "stdio",
+              "score": 0.5923,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "stdio",
+              "score": 0.5034,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "tools/call",
+              "score": 0.8551,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "secret_name",
+              "text": "filesystem.read_file",
+              "score": 0.9918,
+              "start_token": 14,
+              "end_token": 14
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "private-url-fetch",
+      "title": "Открытие private URL",
+      "prompt": "Открой https://internal.company.local/admin?token=demo-secret",
+      "normalized_prompt": "Открой https://internal.company.local/admin?token=demo-secret",
+      "notes": "Проверка private_url и token-контекста.",
+      "prompt_analysis": {
+        "context_text": "Открой https://internal.company.local/admin?token=demo-secret",
+        "max_confidence": 0.9924,
+        "detected_labels": [
+          "private_url",
+          "sensitive_path"
+        ],
+        "entity_count": 2,
+        "sensitive_entity_count": 2,
+        "spans": [
+          {
+            "label": "private_url",
+            "text": "https://internal.company.local/admin?token=demo-secret.",
+            "score": 0.9924,
+            "start_char": 7,
+            "end_char": 62
+          },
+          {
+            "label": "sensitive_path",
+            "text": "https://internal.company.local/admin?token=demo-secret.",
+            "score": 0.7321,
+            "start_char": 7,
+            "end_char": 62
+          }
+        ]
+      },
+      "interpretation": {
+        "status": "supported",
+        "intent": "web_fetch",
+        "confidence": 0.95,
+        "tool_name": "web.fetch",
+        "server_id": "http-server",
+        "arguments": {
+          "url": "https://internal.company.local/admin?token=demo-secret"
+        },
+        "message": "Запрос интерпретирован как web-fetch вызов."
+      },
+      "mcp_request": {
+        "jsonrpc": "2.0",
+        "id": "gliner-lora-demo",
+        "method": "tools/call",
+        "params": {
+          "name": "web.fetch",
+          "arguments": {
+            "url": "https://internal.company.local/admin?token=demo-secret"
+          }
+        }
+      },
+      "firewall": {
+        "risk_score": 0.85,
+        "decision": "block",
+        "rationale": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, private_url, sensitive_path",
+        "features": {
+          "transport_type": "stdio",
+          "jsonrpc_method": "tools/call",
+          "tool_name": "web.fetch",
+          "arg_count": 1,
+          "payload_size": 1422,
+          "response_size": 0,
+          "response_time_ms": 0,
+          "is_error": false,
+          "tools_called_last_session": 0,
+          "failed_calls_last_session": 0,
+          "sensitive_path_flag": false,
+          "external_url_flag": true,
+          "private_ip_flag": false,
+          "sensitive_keyword_flag": true,
+          "repeated_tool_flag": false,
+          "full_context_sensitive_flag": true,
+          "full_context_high_risk_flag": true,
+          "full_context_entity_count": 8,
+          "full_context_sensitive_entity_count": 3,
+          "full_context_max_confidence": 0.9992
+        },
+        "rule_matches": [
+          {
+            "name": "full_context_sensitive_request",
+            "severity": "block",
+            "reason": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, private_url, sensitive_path"
+          }
+        ],
+        "decision_source": {
+          "source": "rule-based",
+          "detail": "full_context_sensitive_request"
+        },
+        "privacy_assessment": {
+          "context_text": "client_id = agent-1 server_id = http-server transport = stdio method = tools/call tool_name = web.fetch url = https://internal.company.local/admin?token=demo-secret",
+          "max_confidence": 0.9992,
+          "detected_labels": [
+            "dotenv",
+            "env_access_pattern",
+            "private_url",
+            "secret_name",
+            "secret_value",
+            "sensitive_path"
+          ],
+          "entity_count": 8,
+          "sensitive_entity_count": 3,
+          "spans": [
+            {
+              "label": "secret_value",
+              "text": "agent-1",
+              "score": 0.7431,
+              "start_token": 2,
+              "end_token": 2
+            },
+            {
+              "label": "dotenv",
+              "text": "http-server",
+              "score": 0.6241,
+              "start_token": 5,
+              "end_token": 5
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "transport",
+              "score": 0.5128,
+              "start_token": 6,
+              "end_token": 6
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "stdio",
+              "score": 0.8321,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "tools/call",
+              "score": 0.8373,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "sensitive_path",
+              "text": "tools/call",
+              "score": 0.726,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "secret_name",
+              "text": "web.fetch",
+              "score": 0.9992,
+              "start_token": 14,
+              "end_token": 14
+            },
+            {
+              "label": "private_url",
+              "text": "https://internal.company.local/admin?token=demo-secret.",
+              "score": 0.996,
+              "start_token": 17,
+              "end_token": 17
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "private-metadata",
+      "title": "Доступ к metadata endpoint",
+      "prompt": "Открой http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+      "normalized_prompt": "Открой http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+      "notes": "Проверка сетевой блокировки и private_url.",
+      "prompt_analysis": {
+        "context_text": "Открой http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+        "max_confidence": 0.9288,
+        "detected_labels": [
+          "private_url",
+          "secret_value",
+          "sensitive_path"
+        ],
+        "entity_count": 3,
+        "sensitive_entity_count": 2,
+        "spans": [
+          {
+            "label": "private_url",
+            "text": "http://169.254.169.254/latest/meta-data/iam/security-credentials/.",
+            "score": 0.9288,
+            "start_char": 7,
+            "end_char": 73
+          },
+          {
+            "label": "secret_value",
+            "text": "http://169.254.169.254/latest/meta-data/iam/security-credentials/.",
+            "score": 0.5225,
+            "start_char": 7,
+            "end_char": 73
+          },
+          {
+            "label": "sensitive_path",
+            "text": "http://169.254.169.254/latest/meta-data/iam/security-credentials/.",
+            "score": 0.9187,
+            "start_char": 7,
+            "end_char": 73
+          }
+        ]
+      },
+      "interpretation": {
+        "status": "supported",
+        "intent": "web_fetch",
+        "confidence": 0.95,
+        "tool_name": "web.fetch",
+        "server_id": "http-server",
+        "arguments": {
+          "url": "http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+        },
+        "message": "Запрос интерпретирован как web-fetch вызов."
+      },
+      "mcp_request": {
+        "jsonrpc": "2.0",
+        "id": "gliner-lora-demo",
+        "method": "tools/call",
+        "params": {
+          "name": "web.fetch",
+          "arguments": {
+            "url": "http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+          }
+        }
+      },
+      "firewall": {
+        "risk_score": 1.0,
+        "decision": "block",
+        "rationale": "Attempted access to blocked or private host: 169.254.169.254; Full-context privacy evaluator detected high-risk sensitive entities: dotenv, private_url",
+        "features": {
+          "transport_type": "stdio",
+          "jsonrpc_method": "tools/call",
+          "tool_name": "web.fetch",
+          "arg_count": 1,
+          "payload_size": 1686,
+          "response_size": 0,
+          "response_time_ms": 0,
+          "is_error": false,
+          "tools_called_last_session": 0,
+          "failed_calls_last_session": 0,
+          "sensitive_path_flag": false,
+          "external_url_flag": true,
+          "private_ip_flag": true,
+          "sensitive_keyword_flag": true,
+          "repeated_tool_flag": false,
+          "full_context_sensitive_flag": true,
+          "full_context_high_risk_flag": true,
+          "full_context_entity_count": 8,
+          "full_context_sensitive_entity_count": 3,
+          "full_context_max_confidence": 0.9997
+        },
+        "rule_matches": [
+          {
+            "name": "private_address_access",
+            "severity": "block",
+            "reason": "Attempted access to blocked or private host: 169.254.169.254"
+          },
+          {
+            "name": "full_context_sensitive_request",
+            "severity": "block",
+            "reason": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, private_url"
+          }
+        ],
+        "decision_source": {
+          "source": "rule-based",
+          "detail": "private_address_access"
+        },
+        "privacy_assessment": {
+          "context_text": "client_id = agent-1 server_id = http-server transport = stdio method = tools/call tool_name = web.fetch url = http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+          "max_confidence": 0.9997,
+          "detected_labels": [
+            "dotenv",
+            "env_access_pattern",
+            "private_url",
+            "secret_name",
+            "secret_value"
+          ],
+          "entity_count": 8,
+          "sensitive_entity_count": 3,
+          "spans": [
+            {
+              "label": "secret_value",
+              "text": "agent-1",
+              "score": 0.9997,
+              "start_token": 2,
+              "end_token": 2
+            },
+            {
+              "label": "dotenv",
+              "text": "server_id",
+              "score": 0.5102,
+              "start_token": 3,
+              "end_token": 3
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "transport",
+              "score": 0.6883,
+              "start_token": 6,
+              "end_token": 6
+            },
+            {
+              "label": "dotenv",
+              "text": "stdio",
+              "score": 0.6592,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "stdio",
+              "score": 0.7715,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "tools/call",
+              "score": 0.9005,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "secret_name",
+              "text": "web.fetch",
+              "score": 0.9971,
+              "start_token": 14,
+              "end_token": 14
+            },
+            {
+              "label": "private_url",
+              "text": "http://169.254.169.254/latest/meta-data/iam/security-credentials/.",
+              "score": 0.9839,
+              "start_token": 17,
+              "end_token": 17
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "mixed-search",
+      "title": "Комбинированный MCP-поиск",
+      "prompt": "Найди OPENAI_API_KEY, .env.local и /workspace/project/secrets/app.env",
+      "normalized_prompt": "Найди OPENAI_API_KEY, .env.local и /workspace/project/secrets/app.env",
+      "notes": "Проверка нескольких категорий одновременно.",
+      "prompt_analysis": {
+        "context_text": "Найди OPENAI_API_KEY, .env.local и /workspace/project/secrets/app.env",
+        "max_confidence": 1.0,
+        "detected_labels": [
+          "dotenv",
+          "env_access_pattern",
+          "secret_name",
+          "secret_value",
+          "sensitive_path"
+        ],
+        "entity_count": 5,
+        "sensitive_entity_count": 2,
+        "spans": [
+          {
+            "label": "secret_name",
+            "text": "OPENAI_API_KEY",
+            "score": 1.0,
+            "start_char": 6,
+            "end_char": 20
+          },
+          {
+            "label": "secret_value",
+            "text": "OPENAI_API_KEY",
+            "score": 0.8195,
+            "start_char": 6,
+            "end_char": 20
+          },
+          {
+            "label": "dotenv",
+            "text": ".env.local",
+            "score": 0.9884,
+            "start_char": 22,
+            "end_char": 32
+          },
+          {
+            "label": "env_access_pattern",
+            "text": ".env.local",
+            "score": 1.0,
+            "start_char": 22,
+            "end_char": 32
+          },
+          {
+            "label": "sensitive_path",
+            "text": ".env.local",
+            "score": 0.6065,
+            "start_char": 22,
+            "end_char": 32
+          }
+        ]
+      },
+      "interpretation": {
+        "status": "supported",
+        "intent": "search",
+        "confidence": 0.83,
+        "tool_name": "filesystem.search",
+        "server_id": "filesystem-server",
+        "arguments": {
+          "path": "/workspace/project/secrets/app.env",
+          "query": "OPENAI_API_KEY, .env.local и /workspace/project/secrets/app.env"
+        },
+        "message": "Запрос интерпретирован как поиск по файловому дереву."
+      },
+      "mcp_request": {
+        "jsonrpc": "2.0",
+        "id": "gliner-lora-demo",
+        "method": "tools/call",
+        "params": {
+          "name": "filesystem.search",
+          "arguments": {
+            "path": "/workspace/project/secrets/app.env",
+            "query": "OPENAI_API_KEY, .env.local и /workspace/project/secrets/app.env"
+          }
+        }
+      },
+      "firewall": {
+        "risk_score": 1.0,
+        "decision": "block",
+        "rationale": "Attempted access to sensitive path fragment: /workspace/project/secrets/app.env; Full-context privacy evaluator detected high-risk sensitive entities: dotenv",
+        "features": {
+          "transport_type": "stdio",
+          "jsonrpc_method": "tools/call",
+          "tool_name": "filesystem.search",
+          "arg_count": 2,
+          "payload_size": 1824,
+          "response_size": 0,
+          "response_time_ms": 0,
+          "is_error": false,
+          "tools_called_last_session": 0,
+          "failed_calls_last_session": 0,
+          "sensitive_path_flag": true,
+          "external_url_flag": false,
+          "private_ip_flag": false,
+          "sensitive_keyword_flag": true,
+          "repeated_tool_flag": false,
+          "full_context_sensitive_flag": true,
+          "full_context_high_risk_flag": true,
+          "full_context_entity_count": 6,
+          "full_context_sensitive_entity_count": 1,
+          "full_context_max_confidence": 0.9972
+        },
+        "rule_matches": [
+          {
+            "name": "sensitive_path_access",
+            "severity": "block",
+            "reason": "Attempted access to sensitive path fragment: /workspace/project/secrets/app.env"
+          },
+          {
+            "name": "full_context_sensitive_request",
+            "severity": "block",
+            "reason": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv"
+          }
+        ],
+        "decision_source": {
+          "source": "rule-based",
+          "detail": "sensitive_path_access"
+        },
+        "privacy_assessment": {
+          "context_text": "client_id = agent-1 server_id = filesystem-server transport = stdio method = tools/call tool_name = filesystem.search path = /workspace/project/secrets/app.env query = OPENAI_API_KEY , .env.local и /workspace/project/secrets/app.env",
+          "max_confidence": 0.9972,
+          "detected_labels": [
+            "dotenv",
+            "env_access_pattern",
+            "secret_name",
+            "secret_value"
+          ],
+          "entity_count": 6,
+          "sensitive_entity_count": 1,
+          "spans": [
+            {
+              "label": "secret_name",
+              "text": "filesystem-server",
+              "score": 0.6885,
+              "start_token": 5,
+              "end_token": 5
+            },
+            {
+              "label": "secret_name",
+              "text": "filesystem.search",
+              "score": 0.9689,
+              "start_token": 14,
+              "end_token": 14
+            },
+            {
+              "label": "secret_name",
+              "text": "OPENAI_API_KEY",
+              "score": 0.768,
+              "start_token": 20,
+              "end_token": 20
+            },
+            {
+              "label": "secret_value",
+              "text": "OPENAI_API_KEY",
+              "score": 0.9972,
+              "start_token": 20,
+              "end_token": 20
+            },
+            {
+              "label": "dotenv",
+              "text": ".env.local",
+              "score": 0.7963,
+              "start_token": 22,
+              "end_token": 22
+            },
+            {
+              "label": "env_access_pattern",
+              "text": ".env.local",
+              "score": 0.9749,
+              "start_token": 22,
+              "end_token": 22
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "safe-web-docs",
+      "title": "Безопасный web fetch",
+      "prompt": "Открой https://example.com/docs/security",
+      "normalized_prompt": "Открой https://example.com/docs/security",
+      "notes": "Обычный безопасный web-сценарий.",
+      "prompt_analysis": {
+        "context_text": "Открой https://example.com/docs/security",
+        "max_confidence": 0.0,
+        "detected_labels": [],
+        "entity_count": 0,
+        "sensitive_entity_count": 0,
+        "spans": []
+      },
+      "interpretation": {
+        "status": "supported",
+        "intent": "web_fetch",
+        "confidence": 0.95,
+        "tool_name": "web.fetch",
+        "server_id": "http-server",
+        "arguments": {
+          "url": "https://example.com/docs/security"
+        },
+        "message": "Запрос интерпретирован как web-fetch вызов."
+      },
+      "mcp_request": {
+        "jsonrpc": "2.0",
+        "id": "gliner-lora-demo",
+        "method": "tools/call",
+        "params": {
+          "name": "web.fetch",
+          "arguments": {
+            "url": "https://example.com/docs/security"
+          }
+        }
+      },
+      "firewall": {
+        "risk_score": 0.65,
+        "decision": "block",
+        "rationale": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, sensitive_path",
+        "features": {
+          "transport_type": "stdio",
+          "jsonrpc_method": "tools/call",
+          "tool_name": "web.fetch",
+          "arg_count": 1,
+          "payload_size": 918,
+          "response_size": 0,
+          "response_time_ms": 0,
+          "is_error": false,
+          "tools_called_last_session": 0,
+          "failed_calls_last_session": 0,
+          "sensitive_path_flag": false,
+          "external_url_flag": true,
+          "private_ip_flag": false,
+          "sensitive_keyword_flag": false,
+          "repeated_tool_flag": false,
+          "full_context_sensitive_flag": true,
+          "full_context_high_risk_flag": true,
+          "full_context_entity_count": 7,
+          "full_context_sensitive_entity_count": 2,
+          "full_context_max_confidence": 0.9998
+        },
+        "rule_matches": [
+          {
+            "name": "full_context_sensitive_request",
+            "severity": "block",
+            "reason": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, sensitive_path"
+          }
+        ],
+        "decision_source": {
+          "source": "rule-based",
+          "detail": "full_context_sensitive_request"
+        },
+        "privacy_assessment": {
+          "context_text": "client_id = agent-1 server_id = http-server transport = stdio method = tools/call tool_name = web.fetch url = https://example.com/docs/security",
+          "max_confidence": 0.9998,
+          "detected_labels": [
+            "dotenv",
+            "env_access_pattern",
+            "secret_name",
+            "secret_value",
+            "sensitive_path"
+          ],
+          "entity_count": 7,
+          "sensitive_entity_count": 2,
+          "spans": [
+            {
+              "label": "secret_value",
+              "text": "agent-1",
+              "score": 0.9998,
+              "start_token": 2,
+              "end_token": 2
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "transport",
+              "score": 0.7538,
+              "start_token": 6,
+              "end_token": 6
+            },
+            {
+              "label": "dotenv",
+              "text": "stdio",
+              "score": 0.6466,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "stdio",
+              "score": 0.8098,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "tools/call",
+              "score": 0.8614,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "sensitive_path",
+              "text": "tools/call",
+              "score": 0.5862,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "secret_name",
+              "text": "web.fetch",
+              "score": 0.9974,
+              "start_token": 14,
+              "end_token": 14
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "path-outside-safe-root",
+      "title": "Чтение вне safe roots",
+      "prompt": "Прочитай файл /private/.env",
+      "normalized_prompt": "Прочитай файл /private/.env",
+      "notes": "Проверка rule-based блокировки и чувствительного prompt.",
+      "prompt_analysis": {
+        "context_text": "Прочитай файл /private/.env",
+        "max_confidence": 0.9962,
+        "detected_labels": [
+          "private_url",
+          "sensitive_path"
+        ],
+        "entity_count": 2,
+        "sensitive_entity_count": 2,
+        "spans": [
+          {
+            "label": "private_url",
+            "text": "/private/.env",
+            "score": 0.9962,
+            "start_char": 14,
+            "end_char": 27
+          },
+          {
+            "label": "sensitive_path",
+            "text": "/private/.env",
+            "score": 0.6677,
+            "start_char": 14,
+            "end_char": 27
+          }
+        ]
+      },
+      "interpretation": {
+        "status": "supported",
+        "intent": "read_file",
+        "confidence": 0.92,
+        "tool_name": "filesystem.read_file",
+        "server_id": "filesystem-server",
+        "arguments": {
+          "path": "/private/.env"
+        },
+        "message": "Запрос интерпретирован как чтение файла через filesystem.read_file."
+      },
+      "mcp_request": {
+        "jsonrpc": "2.0",
+        "id": "gliner-lora-demo",
+        "method": "tools/call",
+        "params": {
+          "name": "filesystem.read_file",
+          "arguments": {
+            "path": "/private/.env"
+          }
+        }
+      },
+      "firewall": {
+        "risk_score": 0.65,
+        "decision": "block",
+        "rationale": "Attempted access to a private backend path exposed through MCP.; Full-context privacy evaluator detected high-risk sensitive entities: dotenv, private_url",
+        "features": {
+          "transport_type": "stdio",
+          "jsonrpc_method": "tools/call",
+          "tool_name": "filesystem.read_file",
+          "arg_count": 1,
+          "payload_size": 564,
+          "response_size": 0,
+          "response_time_ms": 0,
+          "is_error": false,
+          "tools_called_last_session": 0,
+          "failed_calls_last_session": 0,
+          "sensitive_path_flag": false,
+          "external_url_flag": false,
+          "private_ip_flag": false,
+          "sensitive_keyword_flag": false,
+          "repeated_tool_flag": false,
+          "full_context_sensitive_flag": true,
+          "full_context_high_risk_flag": true,
+          "full_context_entity_count": 8,
+          "full_context_sensitive_entity_count": 2,
+          "full_context_max_confidence": 0.9987
+        },
+        "rule_matches": [
+          {
+            "name": "path_outside_safe_roots",
+            "severity": "warn",
+            "reason": "Read operation targets a path outside allowed roots."
+          },
+          {
+            "name": "private_backend_path_access",
+            "severity": "block",
+            "reason": "Attempted access to a private backend path exposed through MCP."
+          },
+          {
+            "name": "full_context_sensitive_request",
+            "severity": "block",
+            "reason": "Full-context privacy evaluator detected high-risk sensitive entities: dotenv, private_url"
+          }
+        ],
+        "decision_source": {
+          "source": "rule-based",
+          "detail": "private_backend_path_access"
+        },
+        "privacy_assessment": {
+          "context_text": "client_id = agent-1 server_id = filesystem-server transport = stdio method = tools/call tool_name = filesystem.read_file path = /private/.env",
+          "max_confidence": 0.9987,
+          "detected_labels": [
+            "dotenv",
+            "env_access_pattern",
+            "private_url",
+            "secret_name",
+            "secret_value"
+          ],
+          "entity_count": 8,
+          "sensitive_entity_count": 2,
+          "spans": [
+            {
+              "label": "secret_value",
+              "text": "agent-1",
+              "score": 0.9987,
+              "start_token": 2,
+              "end_token": 2
+            },
+            {
+              "label": "secret_value",
+              "text": "filesystem-server",
+              "score": 0.5368,
+              "start_token": 5,
+              "end_token": 5
+            },
+            {
+              "label": "dotenv",
+              "text": "stdio",
+              "score": 0.5225,
+              "start_token": 8,
+              "end_token": 8
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "tools/call",
+              "score": 0.8162,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "secret_name",
+              "text": "tools/call",
+              "score": 0.7246,
+              "start_token": 11,
+              "end_token": 11
+            },
+            {
+              "label": "env_access_pattern",
+              "text": "filesystem.read_file",
+              "score": 0.5578,
+              "start_token": 14,
+              "end_token": 14
+            },
+            {
+              "label": "secret_name",
+              "text": "filesystem.read_file",
+              "score": 0.9927,
+              "start_token": 14,
+              "end_token": 14
+            },
+            {
+              "label": "private_url",
+              "text": "/private/.env",
+              "score": 0.9659,
+              "start_token": 17,
+              "end_token": 17
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
