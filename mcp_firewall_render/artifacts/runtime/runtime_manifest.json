@@ -1,0 +1,26 @@
+{
+  "model_name": "CatBoost",
+  "feature_columns": [
+    "feature_transport_type",
+    "feature_jsonrpc_method",
+    "feature_tool_name",
+    "feature_arg_count",
+    "feature_payload_size",
+    "feature_response_size",
+    "feature_response_time_ms",
+    "feature_is_error",
+    "feature_tools_called_last_session",
+    "feature_failed_calls_last_session",
+    "feature_sensitive_path_flag",
+    "feature_external_url_flag",
+    "feature_private_ip_flag",
+    "feature_sensitive_keyword_flag",
+    "feature_repeated_tool_flag"
+  ],
+  "class_labels": [
+    "normal",
+    "anomalous",
+    "malicious"
+  ],
+  "target_column": "target_class"
+}

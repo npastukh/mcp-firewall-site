@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp-firewall-prototype"
+version = "0.1.0"
+description = "Research prototype of an intelligent application-layer firewall for MCP servers"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "scikit-learn>=1.5",
+    "fastapi>=0.115",
+    "huggingface_hub>=0.24",
+    "httpx>=0.27",
+    "uvicorn>=0.30",
+    "torch>=2.12.0",
+    "fastmcp>=3.3.1",
+    "tqdm>=4.67.3",
+]
+
+[project.optional-dependencies]
+boosting = [
+    "lightgbm>=4.5",
+    "xgboost>=2.1",
+    "catboost>=1.2",
+]
+explainability = [
+    "shap>=0.46",
+]
+full = [
+    "lightgbm>=4.5",
+    "xgboost>=2.1",
+    "catboost>=1.2",
+    "shap>=0.46",
+]
+privacy-filter = [
+    "torch>=2.5",
+    "transformers>=5.8.1",
+    "peft>=0.15",
+    "seqeval>=1.2",
+]
+gliner2 = [
+    "gliner2",
+    "peft>=0.15",
+]
+llama-firewall = [
+    "llamafirewall",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv]
+package = true

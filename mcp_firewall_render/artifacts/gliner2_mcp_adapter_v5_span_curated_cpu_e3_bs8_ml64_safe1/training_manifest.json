@@ -1,0 +1,6 @@
+{
+  "base_model": "artifacts/models/fastino_gliner2_large_v1",
+  "data_dir": "data/mcp_suspicious_requests_gliner2_v5_span_curated",
+  "recommended_runtime_checkpoint": "artifacts/gliner2_mcp_adapter_v5_span_curated_cpu_e3_bs8_ml64_safe1/best",
+  "fallback_runtime_checkpoint": "artifacts/gliner2_mcp_adapter_v5_span_curated_cpu_e3_bs8_ml64_safe1/final"
+}
