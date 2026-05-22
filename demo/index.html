@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCP Firewall — демонстрационный стенд</title>
+    <link rel="stylesheet" href="../assets/styles.css?v=20260522-live-site" />
+  </head>
+  <body data-page="demo">
+    <div class="site-shell">
+      <nav class="site-nav">
+        <a class="brand-mark" href="../">MCP Firewall</a>
+        <div class="nav-links">
+          <a class="nav-link" href="../">Главная</a>
+          <a class="nav-link is-active" href="./">Демонстрационный стенд</a>
+          <a class="nav-link" href="../dashboard/">Аналитический дашборд</a>
+        </div>
+      </nav>
+
+      <main class="page-stack">
+        <section class="hero hero-demo">
+          <div class="hero-copy">
+            <p class="eyebrow">Живой режим</p>
+            <h1>Демонстрация работы защитного контура</h1>
+            <p class="hero-text">
+              Demo-страница отправляет запрос в реальный backend, получает JSON-ответ и показывает общий результат,
+              вклад <code>Rules + CatBoost</code> и, при необходимости, <code>GLiNER + LoRA</code>.
+            </p>
+          </div>
+          <div class="hero-panel compact-panel">
+            <div class="signal-card">
+              <span class="signal-label">API</span>
+              <strong id="api-health-state">не проверен</strong>
+              <p id="api-health-note">Укажи backend URL и проверь соединение перед запуском тестов.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Настройка</p>
+              <h2>Подключение к backend</h2>
+            </div>
+            <p class="section-note">
+              На GitHub Pages здесь будет публичный URL backend, а для локальной проверки можно использовать <code>http://127.0.0.1:8010</code>.
+            </p>
+          </div>
+          <div class="config-grid">
+            <label class="field field-wide">
+              <span>Базовый URL API</span>
+              <input id="api-base-input" type="text" placeholder="http://127.0.0.1:8010" />
+            </label>
+            <div class="actions-row">
+              <button id="api-health-button" type="button" class="button-secondary">Проверить API</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Сценарий</p>
+              <h2>Демонстрационный стенд</h2>
+            </div>
+            <p class="section-note">
+              Можно ввести свой запрос или выбрать один из готовых сценариев.
+            </p>
+          </div>
+          <div class="examples-row" id="demo-examples"></div>
+          <div class="composer-grid">
+            <label class="field field-wide">
+              <span>Текст запроса</span>
+              <textarea id="prompt-input" rows="8">Прочитай файл /workspace/project/README.md</textarea>
+            </label>
+            <div class="inline-fields">
+              <label class="field">
+                <span>Transport</span>
+                <select id="transport-input">
+                  <option value="stdio">stdio</option>
+                  <option value="streamable_http">streamable_http</option>
+                </select>
+              </label>
+            </div>
+            <div class="actions-row">
+              <button id="run-analysis-button" type="button" class="button-primary">Запустить анализ</button>
+              <button id="random-request-button" type="button" class="button-secondary">Случайный запрос</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="result-grid">
+          <section class="panel result-panel result-panel-primary">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Итог</p>
+                <h2>Общее решение системы</h2>
+              </div>
+              <p class="section-note">
+                Главная карточка показывает финальный verdict и короткое объяснение.
+              </p>
+            </div>
+            <div id="overall-result" class="empty-state">
+              Запусти запрос, чтобы увидеть общий результат анализа.
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Stage 1</p>
+                <h2>Rules + CatBoost</h2>
+              </div>
+            </div>
+            <div id="rules-stage" class="empty-state">
+              Здесь появится базовый контур анализа.
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Stage 2</p>
+                <h2>GLiNER + LoRA</h2>
+              </div>
+            </div>
+            <div id="gliner-stage" class="empty-state">
+              Здесь появится semantic-stage или причина, по которой он был пропущен.
+            </div>
+          </section>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Технический разбор</p>
+              <h2>Что именно вернул API</h2>
+            </div>
+            <p class="section-note">
+              Блок полезен для тестирования: здесь видны интерпретация запроса, сформированный <code>tools/call</code> и полный JSON-ответ.
+            </p>
+          </div>
+          <div class="technical-grid">
+            <article class="technical-card">
+              <div class="card-head">
+                <strong>Интерпретация запроса</strong>
+                <span id="interpretation-status">ожидает запуска</span>
+              </div>
+              <pre id="interpretation-output">—</pre>
+            </article>
+            <article class="technical-card">
+              <div class="card-head">
+                <strong>MCP tools/call</strong>
+                <span>структурированный вызов</span>
+              </div>
+              <pre id="request-output">—</pre>
+            </article>
+            <article class="technical-card technical-card-wide">
+              <div class="card-head">
+                <strong>Полный ответ API</strong>
+                <span id="response-status">ожидает запуска</span>
+              </div>
+              <pre id="raw-response-output">—</pre>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="../assets/site-config.js?v=20260522-live-site"></script>
+    <script src="../assets/app.js?v=20260522-live-site"></script>
+  </body>
+</html>

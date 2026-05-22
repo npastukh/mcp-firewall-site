@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCP Firewall — аналитический дашборд</title>
+    <link rel="stylesheet" href="../assets/styles.css?v=20260522-live-site" />
+  </head>
+  <body data-page="dashboard">
+    <div class="site-shell">
+      <nav class="site-nav">
+        <a class="brand-mark" href="../">MCP Firewall</a>
+        <div class="nav-links">
+          <a class="nav-link" href="../">Главная</a>
+          <a class="nav-link" href="../demo/">Демонстрационный стенд</a>
+          <a class="nav-link is-active" href="./">Аналитический дашборд</a>
+        </div>
+      </nav>
+
+      <main class="page-stack">
+        <section class="hero hero-dashboard">
+          <div class="hero-copy">
+            <p class="eyebrow">Доказательная база</p>
+            <h1>Ключевые метрики, распределения и результаты эксперимента</h1>
+            <p class="hero-text">
+              Здесь собраны только те блоки, которые поддерживают исследовательскую часть: обзор датасета, качество моделей и главные признаки,
+              влияющие на решение защитного контура.
+            </p>
+          </div>
+          <div class="hero-panel compact-panel">
+            <div class="signal-card">
+              <span class="signal-label">Текущая схема</span>
+              <strong id="dashboard-scheme">—</strong>
+              <p>Основной рабочий контур, выбранный по результатам эксперимента.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="stats-grid" id="kpi-grid"></section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Схема</p>
+              <h2>Архитектура рабочего контура</h2>
+            </div>
+            <p class="section-note">
+              Дашборд должен не только показывать числа, но и визуально объяснять, как устроен защитный pipeline.
+            </p>
+          </div>
+          <div class="pipeline-grid dashboard-pipeline" id="architecture-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Распределения</p>
+              <h2>Датасет и решения</h2>
+            </div>
+          </div>
+          <div class="chart-grid">
+            <article class="chart-card">
+              <h3>Классы событий</h3>
+              <div id="label-chart" class="bar-list"></div>
+            </article>
+            <article class="chart-card">
+              <h3>Решения firewall</h3>
+              <div id="decision-chart" class="bar-list"></div>
+            </article>
+            <article class="chart-card">
+              <h3>Инструменты</h3>
+              <div id="tool-chart" class="bar-list"></div>
+            </article>
+          </div>
+          <div class="chart-grid chart-grid-lower">
+            <article class="chart-card chart-card-wide">
+              <h3>Распределение сценариев</h3>
+              <div id="scenario-chart" class="bar-list"></div>
+            </article>
+            <article class="chart-card chart-card-wide">
+              <h3>Матрица класс → решение</h3>
+              <div id="decision-matrix"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Модели</p>
+              <h2>Сравнение качества</h2>
+            </div>
+            <p class="section-note">
+              Главный ориентир для выбора рабочего контура — способность стабильно отличать опасные сценарии от безопасных.
+            </p>
+          </div>
+          <div class="chart-grid">
+            <article class="chart-card chart-card-wide">
+              <h3>Лидерборд по PR-AUC OVR</h3>
+              <div id="leaderboard-chart" class="bar-list"></div>
+            </article>
+            <article class="chart-card">
+              <h3>Топ признаков</h3>
+              <div id="feature-chart" class="bar-list"></div>
+            </article>
+            <article class="chart-card">
+              <h3>Confusion matrix лидера</h3>
+              <div id="confusion-matrix"></div>
+            </article>
+          </div>
+          <div class="table-card">
+            <table class="metrics-table">
+              <thead>
+                <tr>
+                  <th>Модель</th>
+                  <th>Balanced Accuracy</th>
+                  <th>Macro Precision</th>
+                  <th>Macro Recall</th>
+                  <th>PR-AUC OVR</th>
+                  <th>ROC-AUC OVR</th>
+                </tr>
+              </thead>
+              <tbody id="model-table"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="../assets/site-config.js?v=20260522-live-site"></script>
+    <script src="../assets/app.js?v=20260522-live-site"></script>
+  </body>
+</html>

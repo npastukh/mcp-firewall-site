@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCP Firewall — интеллектуальный экран для MCP-серверов</title>
+    <link rel="stylesheet" href="./assets/styles.css?v=20260522-live-site" />
+  </head>
+  <body data-page="home">
+    <div class="site-shell">
+      <nav class="site-nav">
+        <a class="brand-mark" href="./">MCP Firewall</a>
+        <div class="nav-links">
+          <a class="nav-link is-active" href="./">Главная</a>
+          <a class="nav-link" href="./demo/">Демонстрационный стенд</a>
+          <a class="nav-link" href="./dashboard/">Аналитический дашборд</a>
+        </div>
+      </nav>
+
+      <main class="page-stack">
+        <section class="hero hero-home">
+          <div class="hero-copy">
+            <p class="eyebrow">Исследовательский проект</p>
+            <h1>Интеллектуальный межсетевой экран для защиты MCP-серверов в агентных системах</h1>
+            <p class="hero-text">
+              Сайт показывает один целостный сценарий: пользовательский запрос интерпретируется в MCP
+              <code>tools/call</code>, проходит через защитный контур и возвращает итоговое решение с понятным объяснением.
+            </p>
+            <div class="hero-actions">
+              <a class="button-primary" href="./demo/">Открыть живой стенд</a>
+              <a class="button-secondary" href="./dashboard/">Посмотреть аналитику</a>
+            </div>
+          </div>
+
+          <div class="hero-panel">
+            <div class="signal-card">
+              <span class="signal-label">Основной контур</span>
+              <strong>Rules + CatBoost</strong>
+              <p>Базовая проверка каждого запроса по правилам, признакам и итоговой оценке риска.</p>
+            </div>
+            <div class="signal-card">
+              <span class="signal-label">Углублённая проверка</span>
+              <strong>GLiNER + LoRA</strong>
+              <p>Полнотекстовый semantic-stage, который запускается только для подозрительных сценариев.</p>
+            </div>
+            <div class="signal-card">
+              <span class="signal-label">Результат</span>
+              <strong>allow / warn / block</strong>
+              <p>Система возвращает общий итог и объясняет, какой контур повлиял на решение.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Как это работает</p>
+              <h2>Схема одного запроса</h2>
+            </div>
+            <p class="section-note">
+              Пользователь видит не набор разрозненных модулей, а один прозрачный pipeline от текста до решения.
+            </p>
+          </div>
+          <div class="pipeline-grid">
+            <article class="pipeline-card">
+              <span class="pipeline-step">01</span>
+              <h3>Пользовательский запрос</h3>
+              <p>Пользователь вводит естественный текст, например запрос на чтение файла или web-fetch вызов.</p>
+            </article>
+            <article class="pipeline-card">
+              <span class="pipeline-step">02</span>
+              <h3>Интерпретация в MCP</h3>
+              <p>Система формирует структурированный <code>tools/call</code> с аргументами для MCP-сервера.</p>
+            </article>
+            <article class="pipeline-card">
+              <span class="pipeline-step">03</span>
+              <h3>Гибридный анализ</h3>
+              <p>Сначала работает быстрый контур <code>Rules + CatBoost</code>, затем при необходимости подключается <code>GLiNER + LoRA</code>.</p>
+            </article>
+            <article class="pipeline-card">
+              <span class="pipeline-step">04</span>
+              <h3>Итоговое решение</h3>
+              <p>Сайт получает один JSON-ответ с интерпретацией, промежуточными результатами и финальным вердиктом.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Почему такой интерфейс</p>
+              <h2>Что важно для пользователя</h2>
+            </div>
+            <p class="section-note">
+              Интерфейс не прячет механику системы, но и не перегружает экран служебными деталями.
+            </p>
+          </div>
+          <div class="focus-grid">
+            <article class="focus-card">
+              <h3>Один основной сценарий</h3>
+              <p>В центре сайта один запрос и один ответ, а не несколько конкурирующих демо-режимов.</p>
+            </article>
+            <article class="focus-card">
+              <h3>Читаемый результат</h3>
+              <p>Пользователь видит общий вывод и отдельный вклад каждого аналитического контура.</p>
+            </article>
+            <article class="focus-card">
+              <h3>Живой backend</h3>
+              <p>Демонстрационный стенд работает через реальный API, а не через статический JSON-ответ.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="./assets/site-config.js?v=20260522-live-site"></script>
+  </body>
+</html>
