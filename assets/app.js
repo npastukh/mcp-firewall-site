@@ -316,9 +316,9 @@ async function initDashboardPage() {
       data.evaluation?.summary?.current_scheme || data.meta?.current_scheme || "Rules + CatBoost";
 
     renderCatboostOverview(eda.catboost?.dataset || {}, eda.catboost?.training?.split_protocol || {});
-    renderBarList("label-chart", eda.catboost?.dataset?.label_distribution || {}, "label");
-    renderBarList("catboost-decision-chart", eda.catboost?.dataset?.decision_distribution || {}, "decision");
-    renderBarList("scenario-chart", eda.catboost?.dataset?.scenario_distribution || {}, "scenario");
+    renderDonutChart("label-chart", eda.catboost?.dataset?.label_distribution || {}, "label", "2000 events");
+    renderDonutChart("catboost-decision-chart", eda.catboost?.dataset?.decision_distribution || {}, "decision", "firewall");
+    renderVerticalChart("scenario-chart", eda.catboost?.dataset?.scenario_distribution || {}, "scenario", { limit: 8 });
     renderDecisionMatrix(data.summary?.scenario_matrix || {});
     renderCatboostSplit(eda.catboost?.training?.split_protocol || {});
     renderNumericProfile(eda.catboost?.dataset || {});
@@ -326,14 +326,14 @@ async function initDashboardPage() {
     renderCatboostParams(eda.catboost?.training?.best_params || {});
     renderCatboostDeltaSummary(eda.catboost?.training?.models || []);
     renderMetricComparison("catboost-comparison", eda.catboost?.training?.models || []);
-    renderFeatureImportance(data.evaluation?.feature_importance || []);
+    renderFeatureImportanceChart(data.evaluation?.feature_importance || []);
     renderConfusionMatrix(data.evaluation?.model_metrics || []);
     renderModelTable(eda.catboost?.training?.models || [], "catboost-model-table");
     renderGlinerOverview(eda.gliner || {});
-    renderBarList("gliner-balance-chart", eda.gliner?.source_corpus?.request_safety || {}, "request_safety");
-    renderBarList("gliner-source-type-chart", eda.gliner?.source_corpus?.source_types || {}, "source_type");
-    renderBarList("gliner-label-support-chart", eda.gliner?.source_corpus?.row_label_support || {}, "entity");
-    renderBarList("gliner-template-chart", eda.gliner?.source_corpus?.template_families || {}, "template");
+    renderDonutChart("gliner-balance-chart", eda.gliner?.source_corpus?.request_safety || {}, "request_safety", "source corpus");
+    renderVerticalChart("gliner-source-type-chart", eda.gliner?.source_corpus?.source_types || {}, "source_type");
+    renderVerticalChart("gliner-label-support-chart", eda.gliner?.source_corpus?.row_label_support || {}, "entity");
+    renderVerticalChart("gliner-template-chart", eda.gliner?.source_corpus?.template_families || {}, "template", { limit: 8 });
     renderSplitComparison(eda.gliner?.splits || {});
     renderBeforeAfterComparison("gliner-request-comparison", [
       { label: "Precision", before: eda.gliner?.evaluation?.before?.precision, after: eda.gliner?.evaluation?.after?.precision },
@@ -358,8 +358,8 @@ async function initDashboardPage() {
     renderGlinerLabelComparison(eda.gliner?.evaluation?.label_comparison || []);
     renderKpis(data);
     renderArchitecture(data);
-    renderBarList("decision-chart", data.summary?.decision_counts || {}, "decision");
-    renderLeaderboard(data.evaluation?.model_metrics || []);
+    renderDonutChart("decision-chart", data.summary?.decision_counts || {}, "decision", "summary");
+    renderLeaderboardChart(data.evaluation?.model_metrics || []);
   } catch (error) {
     const target = document.getElementById("catboost-overview");
     if (target) {
@@ -784,34 +784,17 @@ function renderThresholdCurve(rows) {
   const target = document.getElementById("gliner-threshold-chart");
   if (!target || !rows.length) return;
 
-  target.innerHTML = rows
-    .map(
-      (row) => `
-        <div class="comparison-row">
-          <div class="comparison-title">
-            <strong>threshold ${Number(row.threshold).toFixed(2)}</strong>
-            <span>${Number(row.gated_f1).toFixed(4)} gated F1</span>
-          </div>
-          <div class="comparison-bars">
-            <div class="comparison-bar-row">
-              <span>Request F1</span>
-              <div class="bar-track">
-                <div class="bar-fill accent" style="width: ${Number(row.request_f1 || 0) * 100}%"></div>
-              </div>
-              <strong>${Number(row.request_f1 || 0).toFixed(4)}</strong>
-            </div>
-            <div class="comparison-bar-row">
-              <span>Gated F1</span>
-              <div class="bar-track">
-                <div class="bar-fill teal" style="width: ${Number(row.gated_f1 || 0) * 100}%"></div>
-              </div>
-              <strong>${Number(row.gated_f1 || 0).toFixed(4)}</strong>
-            </div>
-          </div>
-        </div>
-      `
-    )
-    .join("");
+  target.innerHTML = renderLineChartMarkup({
+    title: "request F1 / gated F1",
+    xFormatter: (value) => Number(value).toFixed(2),
+    rows: rows.map((row) => ({
+      x: Number(row.threshold),
+      series: {
+        "Request F1": Number(row.request_f1 || 0),
+        "Gated F1": Number(row.gated_f1 || 0),
+      },
+    })),
+  });
 }
 
 function renderGlinerLabelComparison(rows) {
@@ -819,7 +802,14 @@ function renderGlinerLabelComparison(rows) {
   if (!target) return;
 
   target.innerHTML = `
-    <div class="matrix-table-wrap">
+    ${renderGroupedComparisonChartMarkup(rows, {
+      leftKey: "before_f1",
+      rightKey: "after_f1",
+      leftLabel: "До обучения",
+      rightLabel: "После LoRA",
+      type: "entity",
+    })}
+    <div class="matrix-table-wrap gliner-table-wrap">
       <table class="metrics-table">
         <thead>
           <tr>
@@ -848,6 +838,280 @@ function renderGlinerLabelComparison(rows) {
       </table>
     </div>
   `;
+}
+
+function renderDonutChart(targetId, values, type, centerLabel = "") {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+
+  const entries = Object.entries(values).sort((a, b) => Number(b[1]) - Number(a[1]));
+  const total = entries.reduce((sum, [, value]) => sum + Number(value), 0);
+  if (!entries.length || total === 0) {
+    target.innerHTML = '<div class="empty-state compact-empty">Данные недоступны.</div>';
+    return;
+  }
+
+  const circumference = 2 * Math.PI * 44;
+  let offset = 0;
+  const segments = entries
+    .map(([key, value]) => {
+      const share = Number(value) / total;
+      const stroke = circumference * share;
+      const segment = `
+        <circle
+          class="donut-ring-segment"
+          cx="60"
+          cy="60"
+          r="44"
+          stroke="${chartColor(key, type)}"
+          stroke-dasharray="${stroke} ${circumference - stroke}"
+          stroke-dashoffset="${-offset}"
+        ></circle>
+      `;
+      offset += stroke;
+      return segment;
+    })
+    .join("");
+
+  target.innerHTML = `
+    <div class="chart-shell chart-shell-donut">
+      <svg viewBox="0 0 120 120" class="donut-chart" aria-hidden="true">
+        <circle class="donut-ring-bg" cx="60" cy="60" r="44"></circle>
+        ${segments}
+      </svg>
+      <div class="donut-center">
+        <strong>${total}</strong>
+        <span>${escapeHtml(centerLabel)}</span>
+      </div>
+      <div class="chart-legend">
+        ${entries
+          .map(([key, value]) => {
+            const share = ((Number(value) / total) * 100).toFixed(1);
+            return `
+              <div class="legend-item">
+                <span class="legend-swatch" style="background:${chartColor(key, type)}"></span>
+                <strong>${escapeHtml(formatCategory(key, type))}</strong>
+                <span>${value} · ${share}%</span>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderVerticalChart(targetId, values, type, options = {}) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+
+  const entries = Object.entries(values)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, options.limit || 6);
+  if (!entries.length) {
+    target.innerHTML = '<div class="empty-state compact-empty">Данные недоступны.</div>';
+    return;
+  }
+
+  const max = Math.max(...entries.map(([, value]) => Number(value)), 1);
+  target.innerHTML = `
+    <div class="chart-shell">
+      <div class="vbar-chart">
+        ${entries
+          .map(([key, value]) => {
+            const height = Math.max((Number(value) / max) * 100, 6);
+            return `
+              <div class="vbar-item">
+                <div class="vbar-value">${value}</div>
+                <div class="vbar-track">
+                  <div class="vbar-fill" style="height:${height}%; background:${chartColor(key, type)}"></div>
+                </div>
+                <div class="vbar-label">${escapeHtml(formatCategory(key, type))}</div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderFeatureImportanceChart(features) {
+  const top = features.slice(0, 6).map((item) => [cleanFeatureName(item.feature), Number(item.importance)]);
+  renderVerticalChartFromPairs("feature-chart", top, { color: "var(--teal)" });
+}
+
+function renderLeaderboardChart(models) {
+  const sorted = models
+    .slice()
+    .sort((a, b) => Number(b.pr_auc_ovr) - Number(a.pr_auc_ovr))
+    .slice(0, 6)
+    .map((item) => [item.model, Number(item.pr_auc_ovr)]);
+  renderVerticalChartFromPairs("leaderboard-chart", sorted, { color: "var(--accent)" });
+}
+
+function renderVerticalChartFromPairs(targetId, pairs, options = {}) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  if (!pairs.length) {
+    target.innerHTML = '<div class="empty-state compact-empty">Данные недоступны.</div>';
+    return;
+  }
+  const max = Math.max(...pairs.map(([, value]) => Number(value)), 1);
+  const color = options.color || "var(--accent)";
+  target.innerHTML = `
+    <div class="chart-shell">
+      <div class="vbar-chart">
+        ${pairs
+          .map(
+            ([label, value]) => `
+              <div class="vbar-item">
+                <div class="vbar-value">${Number(value) < 1 ? Number(value).toFixed(4) : Math.round(Number(value))}</div>
+                <div class="vbar-track">
+                  <div class="vbar-fill" style="height:${Math.max((Number(value) / max) * 100, 6)}%; background:${color}"></div>
+                </div>
+                <div class="vbar-label">${escapeHtml(label)}</div>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderLineChartMarkup({ rows, xFormatter }) {
+  if (!rows.length) {
+    return '<div class="empty-state compact-empty">Данные недоступны.</div>';
+  }
+
+  const width = 520;
+  const height = 240;
+  const padding = { top: 20, right: 18, bottom: 38, left: 38 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+
+  const xValues = rows.map((row) => row.x);
+  const seriesNames = Object.keys(rows[0].series);
+  const yMax = Math.max(...rows.flatMap((row) => Object.values(row.series).map(Number)), 1);
+  const xMin = Math.min(...xValues);
+  const xMax = Math.max(...xValues);
+  const xRange = xMax - xMin || 1;
+
+  const seriesMarkup = seriesNames
+    .map((seriesName, index) => {
+      const color = index === 0 ? "var(--accent)" : "var(--teal)";
+      const points = rows
+        .map((row) => {
+          const x = padding.left + ((row.x - xMin) / xRange) * plotWidth;
+          const y = padding.top + plotHeight - (Number(row.series[seriesName]) / yMax) * plotHeight;
+          return `${x},${y}`;
+        })
+        .join(" ");
+      const dots = rows
+        .map((row) => {
+          const x = padding.left + ((row.x - xMin) / xRange) * plotWidth;
+          const y = padding.top + plotHeight - (Number(row.series[seriesName]) / yMax) * plotHeight;
+          return `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}"></circle>`;
+        })
+        .join("");
+      return `<polyline fill="none" stroke="${color}" stroke-width="3" points="${points}"></polyline>${dots}`;
+    })
+    .join("");
+
+  const xLabels = rows
+    .map((row) => {
+      const x = padding.left + ((row.x - xMin) / xRange) * plotWidth;
+      return `<text x="${x}" y="${height - 10}" text-anchor="middle" class="line-axis-label">${escapeHtml(xFormatter(row.x))}</text>`;
+    })
+    .join("");
+
+  return `
+    <div class="chart-shell">
+      <svg viewBox="0 0 ${width} ${height}" class="line-chart" aria-hidden="true">
+        <line x1="${padding.left}" y1="${padding.top + plotHeight}" x2="${width - padding.right}" y2="${padding.top + plotHeight}" class="line-axis"></line>
+        <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + plotHeight}" class="line-axis"></line>
+        ${seriesMarkup}
+        ${xLabels}
+      </svg>
+      <div class="chart-legend compact-legend">
+        ${seriesNames
+          .map(
+            (name, index) => `
+              <div class="legend-item">
+                <span class="legend-swatch" style="background:${index === 0 ? "var(--accent)" : "var(--teal)"}"></span>
+                <strong>${escapeHtml(name)}</strong>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderGroupedComparisonChartMarkup(rows, options) {
+  if (!rows.length) {
+    return '<div class="empty-state compact-empty">Данные недоступны.</div>';
+  }
+  const max = Math.max(
+    ...rows.flatMap((row) => [Number(row[options.leftKey] || 0), Number(row[options.rightKey] || 0)]),
+    1
+  );
+
+  return `
+    <div class="chart-shell">
+      <div class="grouped-bars">
+        ${rows
+          .map(
+            (row) => `
+              <div class="grouped-bar-row">
+                <div class="grouped-bar-label">${escapeHtml(formatCategory(row.label, options.type))}</div>
+                <div class="grouped-bar-columns">
+                  <div class="grouped-bar-track">
+                    <div class="grouped-bar-fill" style="width:${(Number(row[options.leftKey] || 0) / max) * 100}%; background:var(--accent)"></div>
+                  </div>
+                  <span>${Number(row[options.leftKey] || 0).toFixed(4)}</span>
+                  <div class="grouped-bar-track">
+                    <div class="grouped-bar-fill" style="width:${(Number(row[options.rightKey] || 0) / max) * 100}%; background:var(--teal)"></div>
+                  </div>
+                  <span>${Number(row[options.rightKey] || 0).toFixed(4)}</span>
+                </div>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+      <div class="chart-legend compact-legend">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--accent)"></span><strong>${escapeHtml(options.leftLabel)}</strong></div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--teal)"></span><strong>${escapeHtml(options.rightLabel)}</strong></div>
+      </div>
+    </div>
+  `;
+}
+
+function chartColor(key, type) {
+  if (type === "label") {
+    return {
+      normal: "#2f6e58",
+      anomalous: "#b4822a",
+      malicious: "#b9684b",
+    }[key] || "#8e5b2c";
+  }
+  if (type === "decision") {
+    return {
+      allow: "#2f6e58",
+      warn: "#b4822a",
+      block: "#b9684b",
+    }[key] || "#8e5b2c";
+  }
+  if (type === "request_safety") {
+    return {
+      safe: "#2f6e58",
+      suspicious: "#b9684b",
+    }[key] || "#8e5b2c";
+  }
+  return "#8e5b2c";
 }
 
 function renderArchitecture(data) {
