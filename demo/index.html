@@ -31,7 +31,7 @@
             <div class="signal-card">
               <span class="signal-label">API</span>
               <strong id="api-health-state">не проверен</strong>
-              <p id="api-health-note">Укажи backend URL и проверь соединение перед запуском тестов.</p>
+              <p id="api-health-note">Стенд подключён к опубликованному backend и проверяет соединение автоматически.</p>
             </div>
           </div>
         </section>
@@ -39,19 +39,19 @@
         <section class="panel">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Настройка</p>
-              <h2>Подключение к backend</h2>
+              <p class="eyebrow">Backend</p>
+              <h2>Подключённый API</h2>
             </div>
             <p class="section-note">
-              На GitHub Pages здесь будет публичный URL backend, а для локальной проверки можно использовать <code>http://127.0.0.1:8010</code>.
+              Стенд использует один подключённый backend и автоматически проверяет соединение.
             </p>
           </div>
           <div class="config-grid">
-            <label class="field field-wide">
-              <span>Базовый URL API</span>
-              <input id="api-base-input" type="text" placeholder="http://127.0.0.1:8010" />
-            </label>
-            <div class="actions-row">
+            <div class="api-fixed-card">
+              <span class="api-fixed-label">Публичный URL API</span>
+              <code id="api-base-output">—</code>
+            </div>
+            <div class="actions-row api-actions-row">
               <button id="api-health-button" type="button" class="button-secondary">Проверить API</button>
             </div>
           </div>
@@ -137,7 +137,7 @@
               <h2>Что именно вернул API</h2>
             </div>
             <p class="section-note">
-              Блок полезен для тестирования: здесь видны интерпретация запроса, сформированный <code>tools/call</code> и полный JSON-ответ.
+              Ниже показаны интерпретация запроса, сформированный <code>tools/call</code> и итоговый ответ backend.
             </p>
           </div>
           <div class="technical-grid">

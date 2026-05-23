@@ -1,4 +1,3 @@
-const STORAGE_KEY = "mcp_firewall_api_base";
 const LOCAL_API_BASE = "http://127.0.0.1:8010";
 
 const EXAMPLES = [
@@ -31,14 +30,16 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initDemoPage() {
-  const apiInput = document.getElementById("api-base-input");
   const healthButton = document.getElementById("api-health-button");
   const runButton = document.getElementById("run-analysis-button");
   const randomButton = document.getElementById("random-request-button");
   const promptInput = document.getElementById("prompt-input");
   const transportInput = document.getElementById("transport-input");
+  const apiOutput = document.getElementById("api-base-output");
 
-  apiInput.value = localStorage.getItem(STORAGE_KEY) || getDefaultApiBase();
+  if (apiOutput) {
+    apiOutput.textContent = getApiBase();
+  }
   renderExamples();
 
   healthButton.addEventListener("click", () => checkApiHealth());
@@ -49,7 +50,6 @@ function initDemoPage() {
     })
   );
   randomButton.addEventListener("click", () => applyRandomExample());
-  apiInput.addEventListener("change", () => storeApiBase(apiInput.value));
 
   checkApiHealth();
 }
@@ -146,8 +146,8 @@ async function runAnalysis({ prompt, transportType }) {
     responseStatus.textContent = "ответ получен";
 
     renderOverallResult(data);
-    renderRulesStage(data.rules_catboost);
-    renderGlinerStage(data.gliner_lora);
+    renderRulesStage(data.rules_catboost, data.source_prompt);
+    renderGlinerStage(data.gliner_lora, data.source_prompt);
     renderJson("interpretation-output", data.interpretation);
     renderJson("request-output", data.mcp_request);
     renderJson("raw-response-output", data);
@@ -188,6 +188,11 @@ function renderOverallResult(data) {
   const target = document.getElementById("overall-result");
   const decision = data.final_decision || "pending";
   const tone = `decision-${decision}`;
+  const stage1State = data.rules_catboost?.decision || (decision === "incomplete" || decision === "unknown" ? "not_run" : "pending");
+  const stage2State =
+    data.gliner_lora?.decision ||
+    data.gliner_lora?.status ||
+    (decision === "incomplete" || decision === "unknown" ? "not_run" : "pending");
   target.innerHTML = `
     <article class="decision-card ${tone}">
       <div class="decision-head">
@@ -196,17 +201,17 @@ function renderOverallResult(data) {
       </div>
       <p class="decision-rationale">${escapeHtml(data.final_rationale || "Результат ещё не сформирован.")}</p>
       <div class="decision-meta">
-        <span>Stage 1: ${formatDecision(data.rules_catboost?.decision || "pending")}</span>
-        <span>Stage 2: ${formatDecision(data.gliner_lora?.decision || data.gliner_lora?.status || "pending")}</span>
+        <span>Stage 1: ${formatDecision(stage1State)}</span>
+        <span>Stage 2: ${formatDecision(stage2State)}</span>
       </div>
     </article>
   `;
 }
 
-function renderRulesStage(stage) {
+function renderRulesStage(stage, sourcePrompt) {
   const target = document.getElementById("rules-stage");
   if (!stage) {
-    target.innerHTML = '<div class="empty-state">Результат первого этапа отсутствует.</div>';
+    target.innerHTML = '<div class="empty-state">Первый этап не запускался, потому что запрос оказался неполным или не попал в поддерживаемый сценарий.</div>';
     return;
   }
 
@@ -222,6 +227,8 @@ function renderRulesStage(stage) {
         .map(([label, value]) => `<li>${escapeHtml(label)}: ${(Number(value) * 100).toFixed(2)}%</li>`)
         .join("")
     : "<li>Вероятности отсутствуют.</li>";
+  const evidence = (stage.rule_matches || []).flatMap((match) => match.evidence || []);
+  const highlightedPrompt = buildHighlightedPrompt(sourcePrompt, evidence, "rules");
 
   target.innerHTML = `
     <article class="stage-card">
@@ -240,14 +247,15 @@ function renderRulesStage(stage) {
           <ul class="plain-list">${probabilityRows}</ul>
         </div>
       </div>
+      ${highlightedPrompt}
     </article>
   `;
 }
 
-function renderGlinerStage(stage) {
+function renderGlinerStage(stage, sourcePrompt) {
   const target = document.getElementById("gliner-stage");
   if (!stage) {
-    target.innerHTML = '<div class="empty-state">Результат второго этапа отсутствует.</div>';
+    target.innerHTML = '<div class="empty-state">Второй этап не запускался, потому что анализ не дошёл до построения MCP-события.</div>';
     return;
   }
 
@@ -262,6 +270,11 @@ function renderGlinerStage(stage) {
 
   const decisionText = stage.decision ? formatDecision(stage.decision) : formatDecision(stage.status);
   const tone = `decision-${stage.decision || stage.status || "pending"}`;
+  const highlightedPrompt = buildHighlightedPrompt(
+    sourcePrompt,
+    (stage.spans || []).map((span) => span.text),
+    "gliner"
+  );
 
   target.innerHTML = `
     <article class="stage-card">
@@ -285,37 +298,556 @@ function renderGlinerStage(stage) {
           <ul class="plain-list">${spans}</ul>
         </div>
       </div>
+      ${highlightedPrompt}
     </article>
   `;
 }
 
 async function initDashboardPage() {
   try {
-    const response = await fetch("../data/dashboard.json");
-    const data = await response.json();
+    const [dashboardResponse, edaResponse] = await Promise.all([
+      fetch("../data/dashboard.json"),
+      fetch("../data/eda-dashboard.json"),
+    ]);
+    const data = await dashboardResponse.json();
+    const eda = await edaResponse.json();
 
     document.getElementById("dashboard-scheme").textContent =
       data.evaluation?.summary?.current_scheme || data.meta?.current_scheme || "Rules + CatBoost";
 
-    renderKpis(data);
-    renderArchitecture(data);
-    renderBarList("label-chart", data.summary?.label_counts || {}, "label");
-    renderBarList("decision-chart", data.summary?.decision_counts || {}, "decision");
-    renderBarList("tool-chart", data.summary?.tool_counts || {}, "tool");
-    renderBarList("scenario-chart", data.summary?.scenario_counts || {}, "scenario");
+    renderCatboostOverview(eda.catboost?.dataset || {}, eda.catboost?.training?.split_protocol || {});
+    renderBarList("label-chart", eda.catboost?.dataset?.label_distribution || {}, "label");
+    renderBarList("catboost-decision-chart", eda.catboost?.dataset?.decision_distribution || {}, "decision");
+    renderBarList("scenario-chart", eda.catboost?.dataset?.scenario_distribution || {}, "scenario");
     renderDecisionMatrix(data.summary?.scenario_matrix || {});
-    renderLeaderboard(data.evaluation?.model_metrics || []);
+    renderCatboostSplit(eda.catboost?.training?.split_protocol || {});
+    renderNumericProfile(eda.catboost?.dataset || {});
+    renderTopToolsByLabel(eda.catboost?.dataset?.top_tools_by_label || {});
+    renderCatboostParams(eda.catboost?.training?.best_params || {});
+    renderCatboostDeltaSummary(eda.catboost?.training?.models || []);
+    renderMetricComparison("catboost-comparison", eda.catboost?.training?.models || []);
     renderFeatureImportance(data.evaluation?.feature_importance || []);
     renderConfusionMatrix(data.evaluation?.model_metrics || []);
-    renderModelTable(data.evaluation?.model_metrics || []);
+    renderModelTable(eda.catboost?.training?.models || [], "catboost-model-table");
+    renderGlinerOverview(eda.gliner || {});
+    renderBarList("gliner-balance-chart", eda.gliner?.source_corpus?.request_safety || {}, "request_safety");
+    renderBarList("gliner-source-type-chart", eda.gliner?.source_corpus?.source_types || {}, "source_type");
+    renderBarList("gliner-label-support-chart", eda.gliner?.source_corpus?.row_label_support || {}, "entity");
+    renderBarList("gliner-template-chart", eda.gliner?.source_corpus?.template_families || {}, "template");
+    renderSplitComparison(eda.gliner?.splits || {});
+    renderBeforeAfterComparison("gliner-request-comparison", [
+      { label: "Precision", before: eda.gliner?.evaluation?.before?.precision, after: eda.gliner?.evaluation?.after?.precision },
+      { label: "Recall", before: eda.gliner?.evaluation?.before?.recall, after: eda.gliner?.evaluation?.after?.recall },
+      { label: "F1", before: eda.gliner?.evaluation?.before?.f1, after: eda.gliner?.evaluation?.after?.f1 },
+      { label: "Accuracy", before: eda.gliner?.evaluation?.before?.accuracy, after: eda.gliner?.evaluation?.after?.accuracy },
+    ]);
+    renderBeforeAfterComparison("gliner-span-comparison", [
+      {
+        label: "Gated Precision",
+        before: eda.gliner?.evaluation?.before?.gated_precision,
+        after: eda.gliner?.evaluation?.after?.gated_precision,
+      },
+      {
+        label: "Gated Recall",
+        before: eda.gliner?.evaluation?.before?.gated_recall,
+        after: eda.gliner?.evaluation?.after?.gated_recall,
+      },
+      { label: "Gated F1", before: eda.gliner?.evaluation?.before?.gated_f1, after: eda.gliner?.evaluation?.after?.gated_f1 },
+    ]);
+    renderThresholdCurve(eda.gliner?.evaluation?.threshold_curve || []);
+    renderGlinerLabelComparison(eda.gliner?.evaluation?.label_comparison || []);
+    renderKpis(data);
+    renderArchitecture(data);
+    renderBarList("decision-chart", data.summary?.decision_counts || {}, "decision");
+    renderLeaderboard(data.evaluation?.model_metrics || []);
   } catch (error) {
-    const target = document.getElementById("kpi-grid");
+    const target = document.getElementById("catboost-overview");
     if (target) {
       target.innerHTML = `<article class="kpi-card"><strong>Не удалось загрузить dashboard.json</strong><p>${escapeHtml(
         error.message
       )}</p></article>`;
     }
   }
+}
+
+function renderCatboostOverview(dataset, splitProtocol) {
+  const target = document.getElementById("catboost-overview");
+  if (!target) return;
+
+  const scenarioCount = Object.keys(dataset.scenario_distribution || {}).length;
+  const cards = [
+    {
+      label: "Всего событий",
+      value: String(dataset.total_records || 0),
+      note: "Лабораторный датасет MCP-событий для обучения и оценки классического контура.",
+    },
+    {
+      label: "Train / test",
+      value: `${splitProtocol.train_rows || 0} / ${splitProtocol.test_rows || 0}`,
+      note: `${splitProtocol.type || "Stratified split"} с группировкой по session_id.`,
+    },
+    {
+      label: "Группы сессий",
+      value: `${splitProtocol.train_groups || 0} / ${splitProtocol.test_groups || 0}`,
+      note: "Такой split уменьшает утечку контекста между train и test.",
+    },
+    {
+      label: "Типов сценариев",
+      value: String(scenarioCount),
+      note: "Безопасные, аномальные и вредоносные кейсы распределены по разным шаблонам поведения.",
+    },
+  ];
+
+  target.innerHTML = cards
+    .map(
+      (card) => `
+        <article class="kpi-card">
+          <span class="kpi-label">${escapeHtml(card.label)}</span>
+          <strong class="kpi-value">${escapeHtml(card.value)}</strong>
+          <p class="kpi-note">${escapeHtml(card.note)}</p>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderCatboostSplit(splitProtocol) {
+  const target = document.getElementById("catboost-split-grid");
+  if (!target) return;
+
+  const steps = [
+    {
+      label: "Разбиение",
+      value: splitProtocol.type || "StratifiedGroupKFold",
+      note: "Train и test формировались по session_id, а не случайно по строкам.",
+    },
+    {
+      label: "Целевая метрика",
+      value: splitProtocol.selection_metric || "PR-AUC OVR",
+      note: "Именно по этой метрике выбиралась итоговая конфигурация CatBoost.",
+    },
+    {
+      label: "Тестовая часть",
+      value: `${splitProtocol.test_rows || 0} строк / ${splitProtocol.test_groups || 0} групп`,
+      note: "Финальная оценка считалась на отдельной тестовой части после подбора гиперпараметров.",
+    },
+  ];
+
+  target.innerHTML = steps
+    .map(
+      (step) => `
+        <article class="scheme-card">
+          <span class="signal-label">${escapeHtml(step.label)}</span>
+          <strong>${escapeHtml(step.value)}</strong>
+          <p>${escapeHtml(step.note)}</p>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderNumericProfile(dataset) {
+  const target = document.getElementById("catboost-numeric-profile");
+  if (!target) return;
+
+  const byLabel = dataset.numeric_by_label || [];
+  const byDecision = dataset.risk_by_decision || [];
+
+  target.innerHTML = `
+    <div class="comparison-row">
+      <div class="comparison-title">
+        <strong>Средний payload size</strong>
+      </div>
+      <div class="comparison-bars">
+        ${byLabel
+          .map(
+            (row) => `
+              <div class="comparison-bar-row">
+                <span>${escapeHtml(formatCategory(row.label, "label"))}</span>
+                <div class="bar-track">
+                  <div class="bar-fill ${barToneClass(row.label, "label")}" style="width: ${Math.min((Number(row.avg_payload_size || 0) / 6000) * 100, 100)}%"></div>
+                </div>
+                <strong>${Math.round(Number(row.avg_payload_size || 0))}</strong>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    </div>
+    <div class="comparison-row">
+      <div class="comparison-title">
+        <strong>Среднее время ответа, мс</strong>
+      </div>
+      <div class="comparison-bars">
+        ${byLabel
+          .map(
+            (row) => `
+              <div class="comparison-bar-row">
+                <span>${escapeHtml(formatCategory(row.label, "label"))}</span>
+                <div class="bar-track">
+                  <div class="bar-fill ${barToneClass(row.label, "label")}" style="width: ${Math.min((Number(row.avg_response_time_ms || 0) / 2000) * 100, 100)}%"></div>
+                </div>
+                <strong>${Math.round(Number(row.avg_response_time_ms || 0))}</strong>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    </div>
+    <div class="comparison-row">
+      <div class="comparison-title">
+        <strong>Средний risk score по решению</strong>
+      </div>
+      <div class="comparison-bars">
+        ${byDecision
+          .map(
+            (row) => `
+              <div class="comparison-bar-row">
+                <span>${escapeHtml(formatDecision(row.decision))}</span>
+                <div class="bar-track">
+                  <div class="bar-fill ${barToneClass(row.decision, "decision")}" style="width: ${Number(row.avg_risk_score || 0) * 100}%"></div>
+                </div>
+                <strong>${Number(row.avg_risk_score || 0).toFixed(3)}</strong>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderTopToolsByLabel(topToolsByLabel) {
+  const target = document.getElementById("catboost-top-tools");
+  if (!target) return;
+
+  target.innerHTML = `
+    <div class="tool-columns">
+      ${Object.entries(topToolsByLabel)
+        .map(
+          ([label, rows]) => `
+            <article class="tool-column-card">
+              <h4>${escapeHtml(formatCategory(label, "label"))}</h4>
+              <div class="bar-list">
+                ${rows
+                  .map(
+                    (row) => `
+                      <div class="bar-item">
+                        <div class="bar-meta">
+                          <strong>${escapeHtml(row.tool)}</strong>
+                          <span>${row.count}</span>
+                        </div>
+                        <div class="bar-track">
+                          <div class="bar-fill ${barToneClass(label, "label")}" style="width: ${(Number(row.count) / Number(rows[0].count || 1)) * 100}%"></div>
+                        </div>
+                      </div>
+                    `
+                  )
+                  .join("")}
+              </div>
+            </article>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderCatboostParams(params) {
+  const target = document.getElementById("catboost-params");
+  if (!target) return;
+
+  const labels = [
+    ["iterations", "iterations"],
+    ["depth", "depth"],
+    ["learning_rate", "learning rate"],
+    ["l2_leaf_reg", "l2 leaf reg"],
+    ["random_strength", "random strength"],
+    ["bagging_temperature", "bagging temperature"],
+  ];
+
+  target.innerHTML = `
+    <div class="param-grid">
+      ${labels
+        .map(
+          ([key, label]) => `
+            <div class="param-card">
+              <span class="signal-label">${escapeHtml(label)}</span>
+              <strong>${formatParamValue(params[key])}</strong>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderCatboostDeltaSummary(models) {
+  const target = document.getElementById("catboost-delta-summary");
+  if (!target || models.length < 2) return;
+
+  const baseline = models[0];
+  const tuned = models[1];
+  const rows = [
+    ["Balanced Accuracy", baseline.balanced_accuracy, tuned.balanced_accuracy],
+    ["Macro Precision", baseline.macro_precision, tuned.macro_precision],
+    ["Macro Recall", baseline.macro_recall, tuned.macro_recall],
+    ["PR-AUC OVR", baseline.pr_auc_ovr, tuned.pr_auc_ovr],
+    ["ROC-AUC OVR", baseline.roc_auc_ovr, tuned.roc_auc_ovr],
+  ];
+
+  target.innerHTML = rows
+    .map(
+      ([label, before, after]) => `
+        <div class="comparison-row">
+          <div class="comparison-title">
+            <strong>${escapeHtml(label)}</strong>
+            <span>${escapeHtml(formatDelta(before, after))}</span>
+          </div>
+          <div class="comparison-meta">
+            <span>baseline: ${Number(before || 0).toFixed(4)}</span>
+            <span>tuned: ${Number(after || 0).toFixed(4)}</span>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderMetricComparison(targetId, rows) {
+  const target = document.getElementById(targetId);
+  if (!target || !rows.length) return;
+
+  const metricLabels = [
+    ["balanced_accuracy", "Balanced Accuracy"],
+    ["macro_precision", "Macro Precision"],
+    ["macro_recall", "Macro Recall"],
+    ["pr_auc_ovr", "PR-AUC OVR"],
+    ["roc_auc_ovr", "ROC-AUC OVR"],
+  ];
+
+  target.innerHTML = metricLabels
+    .map(([key, label]) => {
+      const values = rows.map((row) => Number(row[key] || 0));
+      const max = Math.max(...values, 1);
+      return `
+        <div class="comparison-row">
+          <div class="comparison-title">
+            <strong>${escapeHtml(label)}</strong>
+          </div>
+          <div class="comparison-bars">
+            ${rows
+              .map(
+                (row, index) => `
+                  <div class="comparison-bar-row">
+                    <span>${escapeHtml(row.label)}</span>
+                    <div class="bar-track">
+                      <div class="bar-fill ${index === 0 ? "accent" : index === 1 ? "teal" : "safe"}" style="width: ${
+                        (Number(row[key] || 0) / max) * 100
+                      }%"></div>
+                    </div>
+                    <strong>${Number(row[key] || 0).toFixed(4)}</strong>
+                  </div>
+                `
+              )
+              .join("")}
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderBeforeAfterComparison(targetId, rows) {
+  const target = document.getElementById(targetId);
+  if (!target || !rows.length) return;
+
+  const max = Math.max(
+    ...rows.flatMap((row) => [Number(row.before || 0), Number(row.after || 0)]),
+    1
+  );
+
+  target.innerHTML = rows
+    .map(
+      (row) => `
+        <div class="comparison-row">
+          <div class="comparison-title">
+            <strong>${escapeHtml(row.label)}</strong>
+            <span>${formatDelta(row.before, row.after)}</span>
+          </div>
+          <div class="comparison-bars">
+            <div class="comparison-bar-row">
+              <span>До обучения</span>
+              <div class="bar-track">
+                <div class="bar-fill accent" style="width: ${(Number(row.before || 0) / max) * 100}%"></div>
+              </div>
+              <strong>${Number(row.before || 0).toFixed(4)}</strong>
+            </div>
+            <div class="comparison-bar-row">
+              <span>После LoRA</span>
+              <div class="bar-track">
+                <div class="bar-fill teal" style="width: ${(Number(row.after || 0) / max) * 100}%"></div>
+              </div>
+              <strong>${Number(row.after || 0).toFixed(4)}</strong>
+            </div>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderGlinerOverview(gliner) {
+  const target = document.getElementById("gliner-overview");
+  if (!target) return;
+
+  const source = gliner.source_corpus || {};
+  const validation = gliner.evaluation?.after_validation || {};
+  const cards = [
+    {
+      label: "Строк в source corpus",
+      value: String(source.rows || 0),
+      note: "Исходный suspicious MCP-корпус до разбиения на train, validation и test.",
+    },
+    {
+      label: "Source types",
+      value: String(Object.keys(source.source_types || {}).length),
+      note: "В корпус включены natural language, shell, JSON, YAML, MCP request и code-like форматы.",
+    },
+    {
+      label: "Оптимальный threshold",
+      value: String(validation.threshold ?? "—"),
+      note: "На validation этот порог дал лучший баланс request-level и span-level качества.",
+    },
+    {
+      label: "Validation gated F1",
+      value: `${Number(validation.gated_f1 || 0).toFixed(4)}`,
+      note: "Итоговая опорная метрика semantic-stage после LoRA-дообучения.",
+    },
+  ];
+
+  target.innerHTML = cards
+    .map(
+      (card) => `
+        <article class="kpi-card">
+          <span class="kpi-label">${escapeHtml(card.label)}</span>
+          <strong class="kpi-value">${escapeHtml(card.value)}</strong>
+          <p class="kpi-note">${escapeHtml(card.note)}</p>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderSplitComparison(splits) {
+  const target = document.getElementById("gliner-split-chart");
+  if (!target) return;
+
+  const rows = Object.entries(splits).map(([name, values]) => ({
+    label: name,
+    rows: values.rows,
+    safe: values.safe,
+    suspicious: values.suspicious,
+  }));
+
+  target.innerHTML = rows
+    .map(
+      (row) => `
+        <div class="comparison-row">
+          <div class="comparison-title">
+            <strong>${escapeHtml(row.label)}</strong>
+            <span>${row.rows} строк</span>
+          </div>
+          <div class="comparison-bars">
+            <div class="comparison-bar-row">
+              <span>safe</span>
+              <div class="bar-track">
+                <div class="bar-fill safe" style="width: ${(Number(row.safe || 0) / Number(row.rows || 1)) * 100}%"></div>
+              </div>
+              <strong>${row.safe}</strong>
+            </div>
+            <div class="comparison-bar-row">
+              <span>suspicious</span>
+              <div class="bar-track">
+                <div class="bar-fill danger" style="width: ${(Number(row.suspicious || 0) / Number(row.rows || 1)) * 100}%"></div>
+              </div>
+              <strong>${row.suspicious}</strong>
+            </div>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderThresholdCurve(rows) {
+  const target = document.getElementById("gliner-threshold-chart");
+  if (!target || !rows.length) return;
+
+  target.innerHTML = rows
+    .map(
+      (row) => `
+        <div class="comparison-row">
+          <div class="comparison-title">
+            <strong>threshold ${Number(row.threshold).toFixed(2)}</strong>
+            <span>${Number(row.gated_f1).toFixed(4)} gated F1</span>
+          </div>
+          <div class="comparison-bars">
+            <div class="comparison-bar-row">
+              <span>Request F1</span>
+              <div class="bar-track">
+                <div class="bar-fill accent" style="width: ${Number(row.request_f1 || 0) * 100}%"></div>
+              </div>
+              <strong>${Number(row.request_f1 || 0).toFixed(4)}</strong>
+            </div>
+            <div class="comparison-bar-row">
+              <span>Gated F1</span>
+              <div class="bar-track">
+                <div class="bar-fill teal" style="width: ${Number(row.gated_f1 || 0) * 100}%"></div>
+              </div>
+              <strong>${Number(row.gated_f1 || 0).toFixed(4)}</strong>
+            </div>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderGlinerLabelComparison(rows) {
+  const target = document.getElementById("gliner-label-comparison");
+  if (!target) return;
+
+  target.innerHTML = `
+    <div class="matrix-table-wrap">
+      <table class="metrics-table">
+        <thead>
+          <tr>
+            <th>Сущность</th>
+            <th>Support</th>
+            <th>До обучения</th>
+            <th>После LoRA</th>
+            <th>Δ</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows
+            .map(
+              (row) => `
+                <tr>
+                  <td>${escapeHtml(formatCategory(row.label, "entity"))}</td>
+                  <td>${row.support}</td>
+                  <td>${Number(row.before_f1 || 0).toFixed(4)}</td>
+                  <td>${Number(row.after_f1 || 0).toFixed(4)}</td>
+                  <td>${escapeHtml(formatDelta(row.before_f1, row.after_f1))}</td>
+                </tr>
+              `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 function renderArchitecture(data) {
@@ -471,14 +1003,15 @@ function renderFeatureImportance(features) {
     .join("");
 }
 
-function renderModelTable(models) {
-  const target = document.getElementById("model-table");
+function renderModelTable(models, targetId = "model-table") {
+  const target = document.getElementById(targetId);
+  if (!target) return;
   const sorted = models.slice().sort((a, b) => Number(b.pr_auc_ovr) - Number(a.pr_auc_ovr));
   target.innerHTML = sorted
     .map(
       (model) => `
         <tr>
-          <td>${escapeHtml(model.model)}</td>
+          <td>${escapeHtml(model.model || model.label)}</td>
           <td>${Number(model.balanced_accuracy).toFixed(4)}</td>
           <td>${Number(model.macro_precision).toFixed(4)}</td>
           <td>${Number(model.macro_recall).toFixed(4)}</td>
@@ -582,6 +1115,62 @@ function renderJson(targetId, value) {
   node.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
+function buildHighlightedPrompt(prompt, fragments, variant) {
+  if (!prompt) return "";
+  const matches = findHighlightMatches(prompt, fragments);
+  const title = variant === "gliner" ? "Подсветка фрагментов GLiNER" : "Подсветка срабатываний правил";
+  if (!matches.length) {
+    return `
+      <div class="highlight-card">
+        <h3>${title}</h3>
+        <p class="trigger-note">Система не смогла привязать срабатывание к точному буквальному фрагменту, поэтому ниже показан исходный запрос без подсветки.</p>
+        <div class="highlight-preview">${escapeHtml(prompt)}</div>
+      </div>
+    `;
+  }
+
+  let cursor = 0;
+  let html = "";
+  matches.forEach((match) => {
+    html += escapeHtml(prompt.slice(cursor, match.start));
+    html += `<mark class="highlight-mark highlight-mark-${variant}">${escapeHtml(prompt.slice(match.start, match.end))}</mark>`;
+    cursor = match.end;
+  });
+  html += escapeHtml(prompt.slice(cursor));
+
+  return `
+    <div class="highlight-card">
+      <h3>${title}</h3>
+      <div class="highlight-preview">${html}</div>
+    </div>
+  `;
+}
+
+function findHighlightMatches(prompt, fragments) {
+  const normalizedPrompt = String(prompt || "");
+  const lowerPrompt = normalizedPrompt.toLowerCase();
+  const candidates = [...new Set((fragments || []).map((item) => String(item || "").trim()).filter((item) => item.length >= 2))]
+    .sort((left, right) => right.length - left.length);
+
+  const matches = [];
+  candidates.forEach((fragment) => {
+    const lowerFragment = fragment.toLowerCase();
+    let startIndex = 0;
+    while (startIndex < lowerPrompt.length) {
+      const index = lowerPrompt.indexOf(lowerFragment, startIndex);
+      if (index === -1) break;
+      const end = index + lowerFragment.length;
+      const overlaps = matches.some((match) => !(end <= match.start || index >= match.end));
+      if (!overlaps) {
+        matches.push({ start: index, end });
+      }
+      startIndex = index + 1;
+    }
+  });
+
+  return matches.sort((left, right) => left.start - right.start);
+}
+
 function setButtonLoading(button, isLoading, label) {
   if (!button) return;
   button.disabled = isLoading;
@@ -589,18 +1178,6 @@ function setButtonLoading(button, isLoading, label) {
 }
 
 function getApiBase() {
-  const input = document.getElementById("api-base-input");
-  const value = (input?.value || localStorage.getItem(STORAGE_KEY) || getDefaultApiBase()).trim().replace(/\/$/, "");
-  storeApiBase(value);
-  return value;
-}
-
-function storeApiBase(value) {
-  const normalized = value.trim().replace(/\/$/, "");
-  localStorage.setItem(STORAGE_KEY, normalized);
-}
-
-function getDefaultApiBase() {
   const configured = window.MCP_FIREWALL_CONFIG?.apiBase?.trim();
   if (configured) {
     return configured.replace(/\/$/, "");
@@ -608,7 +1185,7 @@ function getDefaultApiBase() {
   if (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost") {
     return LOCAL_API_BASE;
   }
-  return "";
+  return LOCAL_API_BASE;
 }
 
 function formatDecision(value) {
@@ -619,6 +1196,9 @@ function formatDecision(value) {
     skipped: "skipped",
     analyzed: "analyzed",
     unavailable: "unavailable",
+    incomplete: "недостаточно данных",
+    unknown: "сценарий не распознан",
+    not_run: "не запускался",
     pending: "pending",
     error: "error",
   };
@@ -643,6 +1223,23 @@ function formatCategory(value, type) {
   if (type === "scenario") {
     return formatScenario(value);
   }
+  if (type === "entity") {
+    return String(value)
+      .replaceAll("_", " ")
+      .replace(/\b\w/g, (match) => match.toUpperCase());
+  }
+  if (type === "request_safety") {
+    return {
+      safe: "safe",
+      suspicious: "suspicious",
+    }[value] || value;
+  }
+  if (type === "source_type") {
+    return String(value).replaceAll("_", " ");
+  }
+  if (type === "template") {
+    return String(value).replaceAll("_", " ");
+  }
   return value;
 }
 
@@ -659,6 +1256,12 @@ function barToneClass(key, type) {
       normal: "safe",
       anomalous: "warn",
       malicious: "danger",
+    }[key] || "accent";
+  }
+  if (type === "request_safety") {
+    return {
+      safe: "safe",
+      suspicious: "danger",
     }[key] || "accent";
   }
   return "accent";
@@ -680,6 +1283,17 @@ function inferDecisionFromScenario(scenario, label) {
   if (label === "malicious") return "block";
   if (label === "anomalous") return "warn";
   return "allow";
+}
+
+function formatDelta(before, after) {
+  const delta = Number(after || 0) - Number(before || 0);
+  return `${delta >= 0 ? "+" : ""}${delta.toFixed(4)}`;
+}
+
+function formatParamValue(value) {
+  if (typeof value !== "number") return String(value ?? "—");
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(4);
 }
 
 function escapeHtml(value) {

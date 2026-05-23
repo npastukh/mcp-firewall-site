@@ -1,0 +1,252 @@
+{
+  "catboost": {
+    "dataset": {
+      "title": "Synthetic MCP events",
+      "total_records": 2000,
+      "label_distribution": {
+        "normal": 1300,
+        "anomalous": 300,
+        "malicious": 400
+      },
+      "decision_distribution": {
+        "allow": 1572,
+        "warn": 113,
+        "block": 315
+      },
+      "scenario_distribution": {
+        "benign_large_transfer": 446,
+        "benign_error_recovery": 433,
+        "benign_usage": 421,
+        "sensitive_file_access": 118,
+        "public_endpoint_exfiltration": 105,
+        "covert_safe_root_access": 91,
+        "private_host_access": 86,
+        "noisy_borderline_search": 85,
+        "error_burst_like": 73,
+        "oversized_sensitive_query": 73,
+        "high_latency_search": 69
+      },
+      "numeric_by_label": [
+        {
+          "label": "normal",
+          "avg_payload_size": 2507.5,
+          "avg_response_time_ms": 672.5
+        },
+        {
+          "label": "anomalous",
+          "avg_payload_size": 5453.4,
+          "avg_response_time_ms": 1812.7
+        },
+        {
+          "label": "malicious",
+          "avg_payload_size": 584.8,
+          "avg_response_time_ms": 147.9
+        }
+      ],
+      "risk_by_decision": [
+        {
+          "decision": "allow",
+          "avg_risk_score": 0.16
+        },
+        {
+          "decision": "warn",
+          "avg_risk_score": 0.455
+        },
+        {
+          "decision": "block",
+          "avg_risk_score": 0.366
+        }
+      ],
+      "top_tools_by_label": {
+        "normal": [
+          { "tool": "filesystem.search", "count": 729 },
+          { "tool": "filesystem.read_file", "count": 303 },
+          { "tool": "web.fetch", "count": 268 }
+        ],
+        "anomalous": [
+          { "tool": "filesystem.search", "count": 258 },
+          { "tool": "filesystem.read_file", "count": 42 }
+        ],
+        "malicious": [
+          { "tool": "filesystem.read_file", "count": 209 },
+          { "tool": "web.fetch", "count": 191 }
+        ]
+      }
+    },
+    "training": {
+      "split_protocol": {
+        "type": "StratifiedGroupKFold by session_id",
+        "train_rows": 1500,
+        "test_rows": 500,
+        "train_groups": 376,
+        "test_groups": 125,
+        "selection_metric": "PR-AUC OVR"
+      },
+      "best_params": {
+        "iterations": 237,
+        "depth": 7,
+        "learning_rate": 0.0385,
+        "l2_leaf_reg": 7.3298,
+        "random_strength": 0.5455,
+        "bagging_temperature": 0.0412
+      },
+      "models": [
+        {
+          "label": "CatBoost baseline",
+          "balanced_accuracy": 0.9147,
+          "macro_precision": 0.8289,
+          "macro_recall": 0.9147,
+          "pr_auc_ovr": 0.9658,
+          "roc_auc_ovr": 0.9858
+        },
+        {
+          "label": "CatBoost tuned",
+          "balanced_accuracy": 0.9253,
+          "macro_precision": 0.825,
+          "macro_recall": 0.9253,
+          "pr_auc_ovr": 0.9655,
+          "roc_auc_ovr": 0.9862
+        },
+        {
+          "label": "Hybrid Rules + CatBoost tuned",
+          "balanced_accuracy": 0.9253,
+          "macro_precision": 0.825,
+          "macro_recall": 0.9253,
+          "pr_auc_ovr": 0.9655,
+          "roc_auc_ovr": 0.9862
+        }
+      ]
+    }
+  },
+  "gliner": {
+    "source_corpus": {
+      "rows": 14471,
+      "request_safety": {
+        "suspicious": 10388,
+        "safe": 4083
+      },
+      "source_types": {
+        "natural_language": 1836,
+        "yaml": 1836,
+        "mcp_request": 1830,
+        "javascript": 1829,
+        "markdown": 1827,
+        "python": 1819,
+        "shell": 1819,
+        "json": 1675
+      },
+      "template_families": {
+        "secret_name_sensitive_path": 1287,
+        "private_host_only": 1247,
+        "env_access_secret_value": 1100,
+        "secret_store_ref_only": 992,
+        "secret_store_ref_secret_value": 900,
+        "safe_benign_mcp": 837,
+        "safe_config_review": 834,
+        "safe_docs": 819
+      },
+      "row_label_support": {
+        "secret_name": 2961,
+        "env_access_pattern": 2873,
+        "sensitive_path": 2779,
+        "secret_value": 2700,
+        "secret_store_ref": 2592,
+        "private_host": 2447
+      }
+    },
+    "splits": {
+      "train": {
+        "rows": 9000,
+        "safe": 1866,
+        "suspicious": 7134
+      },
+      "validation": {
+        "rows": 1800,
+        "safe": 800,
+        "suspicious": 1000
+      },
+      "test": {
+        "rows": 1800,
+        "safe": 800,
+        "suspicious": 1000
+      }
+    },
+    "evaluation": {
+      "threshold_curve": [
+        { "threshold": 0.3, "request_f1": 0.7357, "gated_f1": 0.3694 },
+        { "threshold": 0.5, "request_f1": 0.7515, "gated_f1": 0.3972 },
+        { "threshold": 0.8, "request_f1": 0.7698, "gated_f1": 0.4392 },
+        { "threshold": 0.9, "request_f1": 0.7827, "gated_f1": 0.465 },
+        { "threshold": 0.95, "request_f1": 0.7899, "gated_f1": 0.4881 },
+        { "threshold": 0.99, "request_f1": 0.7912, "gated_f1": 0.5134 },
+        { "threshold": 1.0, "request_f1": 0.7238, "gated_f1": 0.4774 }
+      ],
+      "before": {
+        "precision": 0.5779,
+        "recall": 0.089,
+        "f1": 0.1542,
+        "accuracy": 0.4578,
+        "gated_precision": 0.5325,
+        "gated_recall": 0.0536,
+        "gated_f1": 0.0974
+      },
+      "after": {
+        "precision": 0.7886,
+        "recall": 0.791,
+        "f1": 0.7898,
+        "accuracy": 0.7661,
+        "gated_precision": 0.4853,
+        "gated_recall": 0.5294,
+        "gated_f1": 0.5064
+      },
+      "after_validation": {
+        "threshold": 0.99,
+        "precision": 0.7904,
+        "recall": 0.792,
+        "f1": 0.7912,
+        "accuracy": 0.7678,
+        "gated_precision": 0.4922,
+        "gated_recall": 0.5366,
+        "gated_f1": 0.5134
+      },
+      "label_comparison": [
+        {
+          "label": "env_access_pattern",
+          "support": 290,
+          "before_f1": 0.0,
+          "after_f1": 0.8594
+        },
+        {
+          "label": "private_host",
+          "support": 210,
+          "before_f1": 0.1732,
+          "after_f1": 0.8333
+        },
+        {
+          "label": "secret_name",
+          "support": 280,
+          "before_f1": 0.208,
+          "after_f1": 0.4108
+        },
+        {
+          "label": "secret_store_ref",
+          "support": 230,
+          "before_f1": 0.0,
+          "after_f1": 0.0
+        },
+        {
+          "label": "secret_value",
+          "support": 250,
+          "before_f1": 0.1679,
+          "after_f1": 0.5593
+        },
+        {
+          "label": "sensitive_path",
+          "support": 270,
+          "before_f1": 0.0,
+          "after_f1": 0.123
+        }
+      ]
+    }
+  }
+}
