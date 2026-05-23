@@ -398,6 +398,15 @@ body::before {
   align-items: start;
 }
 
+.result-grid > .panel .section-head {
+  align-items: start;
+  flex-direction: column;
+}
+
+.result-grid > .panel .section-note {
+  max-width: none;
+}
+
 .result-panel-primary {
   grid-column: 1;
 }
@@ -508,6 +517,10 @@ body::before {
   gap: 18px;
 }
 
+.result-grid .stage-columns {
+  grid-template-columns: 1fr;
+}
+
 .stage-columns h3 {
   margin-bottom: 8px;
   font-size: 1rem;
@@ -518,6 +531,14 @@ body::before {
   padding-left: 18px;
   display: grid;
   gap: 8px;
+}
+
+.plain-list li,
+.stage-rationale,
+.decision-rationale,
+.highlight-preview {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .technical-card pre {
