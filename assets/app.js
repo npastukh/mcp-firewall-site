@@ -270,11 +270,27 @@ function renderGlinerStage(stage, sourcePrompt) {
 
   const decisionText = stage.decision ? formatDecision(stage.decision) : formatDecision(stage.status);
   const tone = `decision-${stage.decision || stage.status || "pending"}`;
-  const highlightedPrompt = buildHighlightedPrompt(
-    sourcePrompt,
-    (stage.spans || []).map((span) => span.text),
-    "gliner"
-  );
+  if (stage.status === "skipped") {
+    target.innerHTML = `
+      <article class="stage-card">
+        <div class="stage-head">
+          <span class="stage-pill ${tone}">${decisionText}</span>
+          <span class="stage-risk">status: ${escapeHtml(stage.status || "unknown")}</span>
+        </div>
+        <p class="stage-rationale">${escapeHtml(stage.rationale || "—")}</p>
+        ${stage.trigger_reason ? `<p class="trigger-note">${escapeHtml(stage.trigger_reason)}</p>` : ""}
+      </article>
+    `;
+    return;
+  }
+
+  const highlightedPrompt = stage.spans?.length
+    ? buildHighlightedPrompt(
+        sourcePrompt,
+        (stage.spans || []).map((span) => span.text),
+        "gliner"
+      )
+    : "";
 
   target.innerHTML = `
     <article class="stage-card">
