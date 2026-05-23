@@ -26,13 +26,6 @@
               Здесь собраны данные по датасетам, обучению моделей и итоговым метрикам защитного контура.
             </p>
           </div>
-          <div class="hero-panel compact-panel">
-            <div class="signal-card">
-              <span class="signal-label">Рабочий контур</span>
-              <strong id="dashboard-scheme">—</strong>
-              <p>Контур, который используется в демонстрационном стенде и итоговой оценке.</p>
-            </div>
-          </div>
         </section>
 
         <section class="panel panel-catboost">
@@ -60,7 +53,7 @@
               <div id="scenario-chart" class="bar-list"></div>
             </article>
           </div>
-          <div class="chart-grid chart-grid-lower">
+          <div class="chart-grid chart-grid-lower chart-grid-halves">
             <article class="chart-card chart-card-wide">
               <h3>Схема train/test split</h3>
               <div id="catboost-split-grid" class="scheme-grid"></div>
@@ -70,7 +63,7 @@
               <div id="catboost-numeric-profile" class="comparison-list"></div>
             </article>
           </div>
-          <div class="chart-grid chart-grid-lower">
+          <div class="chart-grid chart-grid-lower chart-grid-halves">
             <article class="chart-card chart-card-wide">
               <h3>Инструменты по классам</h3>
               <div id="catboost-top-tools"></div>
@@ -159,7 +152,7 @@
               <div id="gliner-label-support-chart" class="bar-list"></div>
             </article>
           </div>
-          <div class="chart-grid chart-grid-lower">
+          <div class="chart-grid chart-grid-lower chart-grid-halves">
             <article class="chart-card chart-card-wide">
               <h3>Train / validation / test</h3>
               <div id="gliner-split-chart" class="comparison-list"></div>
@@ -207,26 +200,32 @@
         <section class="panel panel-summary">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Сводка</p>
-              <h2>Итоговые метрики и архитектура рабочего контура</h2>
+              <p class="eyebrow">Сравнение</p>
+              <h2>Кривые и профили качества</h2>
             </div>
-            <p class="section-note">В конце дашборд собирает общую картину: текущую схему, лидеров по качеству и то, как устроен рабочий pipeline.</p>
+            <p class="section-note">
+              Здесь собраны именно графические сравнения: как менялись метрики `CatBoost` и как `GLiNER + LoRA` выглядел до и после
+              дообучения.
+            </p>
           </div>
-          <div class="stats-grid" id="kpi-grid"></div>
           <div class="chart-grid">
             <article class="chart-card chart-card-wide">
-              <h3>Лидерборд по PR-AUC OVR</h3>
-              <div id="leaderboard-chart" class="bar-list"></div>
+              <h3>CatBoost: baseline, tuned, hybrid</h3>
+              <div id="catboost-metric-curve"></div>
             </article>
-            <article class="chart-card">
-              <h3>Решения firewall</h3>
-              <div id="decision-chart" class="bar-list"></div>
+            <article class="chart-card chart-card-wide">
+              <h3>GLiNER + LoRA: request-level до и после</h3>
+              <div id="gliner-request-curve"></div>
             </article>
           </div>
           <div class="chart-grid chart-grid-lower">
             <article class="chart-card chart-card-wide">
-              <h3>Архитектура рабочего контура</h3>
-              <div class="pipeline-grid dashboard-pipeline" id="architecture-grid"></div>
+              <h3>GLiNER + LoRA: span-level до и после</h3>
+              <div id="gliner-span-curve"></div>
+            </article>
+            <article class="chart-card">
+              <h3>Ключевые изменения</h3>
+              <div id="summary-metrics" class="comparison-list"></div>
             </article>
           </div>
         </section>

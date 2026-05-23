@@ -305,29 +305,24 @@ function renderGlinerStage(stage, sourcePrompt) {
 
 async function initDashboardPage() {
   try {
-    const [dashboardResponse, edaResponse] = await Promise.all([
-      fetch("../data/dashboard.json"),
-      fetch("../data/eda-dashboard.json"),
-    ]);
-    const data = await dashboardResponse.json();
-    const eda = await edaResponse.json();
-
-    document.getElementById("dashboard-scheme").textContent =
-      data.evaluation?.summary?.current_scheme || data.meta?.current_scheme || "Rules + CatBoost";
+    const eda = await fetchJsonRequired("../data/eda-dashboard.json");
+    const data = await fetchJsonOptional("../data/dashboard.json");
 
     renderCatboostOverview(eda.catboost?.dataset || {}, eda.catboost?.training?.split_protocol || {});
     renderDonutChart("label-chart", eda.catboost?.dataset?.label_distribution || {}, "label", "2000 events");
     renderDonutChart("catboost-decision-chart", eda.catboost?.dataset?.decision_distribution || {}, "decision", "firewall");
     renderVerticalChart("scenario-chart", eda.catboost?.dataset?.scenario_distribution || {}, "scenario", { limit: 8 });
-    renderDecisionMatrix(data.summary?.scenario_matrix || {});
+    renderDecisionMatrix(data?.summary?.scenario_matrix || buildScenarioMatrixFallback(eda.catboost?.dataset?.scenario_distribution || {}));
     renderCatboostSplit(eda.catboost?.training?.split_protocol || {});
     renderNumericProfile(eda.catboost?.dataset || {});
     renderTopToolsByLabel(eda.catboost?.dataset?.top_tools_by_label || {});
     renderCatboostParams(eda.catboost?.training?.best_params || {});
     renderCatboostDeltaSummary(eda.catboost?.training?.models || []);
     renderMetricComparison("catboost-comparison", eda.catboost?.training?.models || []);
-    renderFeatureImportanceChart(data.evaluation?.feature_importance || []);
-    renderConfusionMatrix(data.evaluation?.model_metrics || []);
+    renderFeatureImportanceChart(eda.catboost?.training?.feature_importance || data?.evaluation?.feature_importance || []);
+    renderConfusionMatrix(
+      eda.catboost?.training?.confusion_matrix ? [eda.catboost.training.confusion_matrix] : data?.evaluation?.model_metrics || []
+    );
     renderModelTable(eda.catboost?.training?.models || [], "catboost-model-table");
     renderGlinerOverview(eda.gliner || {});
     renderDonutChart("gliner-balance-chart", eda.gliner?.source_corpus?.request_safety || {}, "request_safety", "source corpus");
@@ -356,17 +351,34 @@ async function initDashboardPage() {
     ]);
     renderThresholdCurve(eda.gliner?.evaluation?.threshold_curve || []);
     renderGlinerLabelComparison(eda.gliner?.evaluation?.label_comparison || []);
-    renderKpis(data);
-    renderArchitecture(data);
-    renderDonutChart("decision-chart", data.summary?.decision_counts || {}, "decision", "summary");
-    renderLeaderboardChart(data.evaluation?.model_metrics || []);
+    renderCatboostMetricCurve(eda.catboost?.training?.models || []);
+    renderGlinerMetricCurves(eda.gliner?.evaluation || {});
+    renderSummaryMetricChanges(eda);
   } catch (error) {
     const target = document.getElementById("catboost-overview");
     if (target) {
-      target.innerHTML = `<article class="kpi-card"><strong>Не удалось загрузить dashboard.json</strong><p>${escapeHtml(
+      target.innerHTML = `<article class="kpi-card"><strong>Не удалось загрузить данные дашборда</strong><p>${escapeHtml(
         error.message
       )}</p></article>`;
     }
+  }
+}
+
+async function fetchJsonRequired(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`${url}: HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+async function fetchJsonOptional(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    return null;
   }
 }
 
@@ -840,6 +852,124 @@ function renderGlinerLabelComparison(rows) {
   `;
 }
 
+function renderCatboostMetricCurve(models) {
+  const target = document.getElementById("catboost-metric-curve");
+  if (!target || !models.length) return;
+
+  const metricKeys = [
+    { key: "balanced_accuracy", short: "BA" },
+    { key: "macro_precision", short: "Precision" },
+    { key: "macro_recall", short: "Recall" },
+    { key: "pr_auc_ovr", short: "PR-AUC" },
+    { key: "roc_auc_ovr", short: "ROC-AUC" },
+  ];
+
+  const rows = metricKeys.map((metric, index) => ({
+    x: index + 1,
+    series: Object.fromEntries(
+      models.map((model) => [model.label, Number(model[metric.key] || 0)])
+    ),
+  }));
+
+  target.innerHTML = renderLineChartMarkup({
+    rows,
+    xFormatter: (value) => metricKeys[Math.max(0, Math.min(metricKeys.length - 1, Math.round(value) - 1))].short,
+  });
+}
+
+function renderGlinerMetricCurves(evaluation) {
+  const requestTarget = document.getElementById("gliner-request-curve");
+  const spanTarget = document.getElementById("gliner-span-curve");
+  if (requestTarget) {
+    const requestMetrics = [
+      { key: "precision", short: "Precision" },
+      { key: "recall", short: "Recall" },
+      { key: "f1", short: "F1" },
+      { key: "accuracy", short: "Accuracy" },
+    ];
+    requestTarget.innerHTML = renderMultiStageMetricCurve(requestMetrics, [
+      { label: "До обучения", values: evaluation.before || {} },
+      { label: "После LoRA", values: evaluation.after || {} },
+      { label: "После валидации", values: evaluation.after_validation || {} },
+    ]);
+  }
+
+  if (spanTarget) {
+    const spanMetrics = [
+      { key: "gated_precision", short: "Gated P" },
+      { key: "gated_recall", short: "Gated R" },
+      { key: "gated_f1", short: "Gated F1" },
+    ];
+    spanTarget.innerHTML = renderMultiStageMetricCurve(spanMetrics, [
+      { label: "До обучения", values: evaluation.before || {} },
+      { label: "После LoRA", values: evaluation.after || {} },
+      { label: "После валидации", values: evaluation.after_validation || {} },
+    ]);
+  }
+}
+
+function renderMultiStageMetricCurve(metricKeys, seriesRows) {
+  const rows = metricKeys.map((metric, index) => ({
+    x: index + 1,
+    series: Object.fromEntries(seriesRows.map((row) => [row.label, Number(row.values?.[metric.key] || 0)])),
+  }));
+
+  return renderLineChartMarkup({
+    rows,
+    xFormatter: (value) => metricKeys[Math.max(0, Math.min(metricKeys.length - 1, Math.round(value) - 1))].short,
+  });
+}
+
+function renderSummaryMetricChanges(eda) {
+  const target = document.getElementById("summary-metrics");
+  if (!target) return;
+
+  const baseline = eda.catboost?.training?.models?.[0] || {};
+  const tuned = eda.catboost?.training?.models?.[1] || {};
+  const before = eda.gliner?.evaluation?.before || {};
+  const after = eda.gliner?.evaluation?.after || {};
+  const validated = eda.gliner?.evaluation?.after_validation || {};
+
+  const rows = [
+    {
+      label: "CatBoost Balanced Accuracy",
+      before: baseline.balanced_accuracy,
+      after: tuned.balanced_accuracy,
+      note: "Изменение после подбора гиперпараметров.",
+    },
+    {
+      label: "GLiNER request F1",
+      before: before.f1,
+      after: after.f1,
+      note: "Сравнение до и после LoRA-дообучения.",
+    },
+    {
+      label: "GLiNER gated F1",
+      before: before.gated_f1,
+      after: validated.gated_f1,
+      note: "Итоговое span-качество на validation threshold.",
+    },
+  ];
+
+  target.innerHTML = rows
+    .map(
+      (row) => `
+        <div class="comparison-row">
+          <div class="comparison-title">
+            <strong>${escapeHtml(row.label)}</strong>
+            <span>${escapeHtml(formatDelta(row.before, row.after))}</span>
+          </div>
+          <div class="comparison-meta">
+            <span>до: ${Number(row.before || 0).toFixed(4)}</span>
+            <span>после: ${Number(row.after || 0).toFixed(4)}</span>
+          </div>
+          <p class="kpi-note">${escapeHtml(row.note)}</p>
+        </div>
+      `
+    )
+    .join("");
+}
+
 function renderDonutChart(targetId, values, type, centerLabel = "") {
   const target = document.getElementById(targetId);
   if (!target) return;
@@ -998,9 +1128,10 @@ function renderLineChartMarkup({ rows, xFormatter }) {
   const xMax = Math.max(...xValues);
   const xRange = xMax - xMin || 1;
 
+  const palette = ["var(--accent)", "var(--teal)", "var(--safe)", "var(--warn)", "var(--danger)"];
   const seriesMarkup = seriesNames
     .map((seriesName, index) => {
-      const color = index === 0 ? "var(--accent)" : "var(--teal)";
+      const color = palette[index % palette.length];
       const points = rows
         .map((row) => {
           const x = padding.left + ((row.x - xMin) / xRange) * plotWidth;
@@ -1039,7 +1170,7 @@ function renderLineChartMarkup({ rows, xFormatter }) {
           .map(
             (name, index) => `
               <div class="legend-item">
-                <span class="legend-swatch" style="background:${index === 0 ? "var(--accent)" : "var(--teal)"}"></span>
+                <span class="legend-swatch" style="background:${palette[index % palette.length]}"></span>
                 <strong>${escapeHtml(name)}</strong>
               </div>
             `
@@ -1149,49 +1280,6 @@ function renderArchitecture(data) {
           <span class="pipeline-step">${escapeHtml(card.step)}</span>
           <h3>${escapeHtml(card.title)}</h3>
           <p>${escapeHtml(card.text)}</p>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function renderKpis(data) {
-  const grid = document.getElementById("kpi-grid");
-  const totalRecords = data.meta?.total_records || 0;
-  const currentScheme = data.evaluation?.summary?.current_scheme || "Rules + CatBoost";
-  const bestPrAuc = data.evaluation?.summary?.best_pr_auc_ovr?.value || 0;
-  const bestBalancedAccuracy = data.evaluation?.summary?.best_balanced_accuracy?.value || 0;
-
-  const cards = [
-    {
-      label: "Всего событий",
-      value: String(totalRecords),
-      note: "Объём синтетического лабораторного датасета.",
-    },
-    {
-      label: "Рабочий контур",
-      value: currentScheme,
-      note: "Контур, который используется в демонстрационном стенде и итоговой оценке.",
-    },
-    {
-      label: "Лучший PR-AUC OVR",
-      value: Number(bestPrAuc).toFixed(4),
-      note: "Основная метрика качества на редких опасных сценариях.",
-    },
-    {
-      label: "Balanced Accuracy",
-      value: Number(bestBalancedAccuracy).toFixed(4),
-      note: "Показывает, насколько модель стабильно различает все классы событий.",
-    },
-  ];
-
-  grid.innerHTML = cards
-    .map(
-      (card) => `
-        <article class="kpi-card">
-          <span class="kpi-label">${escapeHtml(card.label)}</span>
-          <strong class="kpi-value">${escapeHtml(card.value)}</strong>
-          <p class="kpi-note">${escapeHtml(card.note)}</p>
         </article>
       `
     )
@@ -1547,6 +1635,28 @@ function inferDecisionFromScenario(scenario, label) {
   if (label === "malicious") return "block";
   if (label === "anomalous") return "warn";
   return "allow";
+}
+
+function buildScenarioMatrixFallback(scenarioDistribution) {
+  const matrix = {
+    normal: {},
+    anomalous: {},
+    malicious: {},
+  };
+
+  Object.entries(scenarioDistribution || {}).forEach(([scenario, count]) => {
+    if (scenario.startsWith("benign_")) {
+      matrix.normal[scenario] = Number(count);
+    } else if (
+      ["error_burst_like", "high_latency_search", "noisy_borderline_search", "oversized_sensitive_query"].includes(scenario)
+    ) {
+      matrix.anomalous[scenario] = Number(count);
+    } else {
+      matrix.malicious[scenario] = Number(count);
+    }
+  });
+
+  return matrix;
 }
 
 function formatDelta(before, after) {

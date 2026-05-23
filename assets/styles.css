@@ -49,7 +49,7 @@ body::before {
 }
 
 .site-shell {
-  width: min(1220px, calc(100% - 32px));
+  width: min(1400px, calc(100% - 32px));
   margin: 0 auto;
   padding: 28px 0 64px;
 }
@@ -126,6 +126,10 @@ body::before {
   grid-template-columns: 1.3fr 0.9fr;
   gap: 24px;
   padding: 34px;
+}
+
+.hero-dashboard {
+  grid-template-columns: 1fr;
 }
 
 .hero-copy h1,
@@ -315,6 +319,14 @@ body::before {
 
 .chart-grid-lower {
   margin-top: 16px;
+}
+
+.chart-grid-halves {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chart-grid-halves .chart-card-wide {
+  grid-column: auto;
 }
 
 .pipeline-grid {
@@ -1080,7 +1092,7 @@ a {
 
 @media (max-width: 760px) {
   .site-shell {
-    width: min(100% - 20px, 1220px);
+    width: min(100% - 20px, 1400px);
     padding-top: 20px;
   }
 

@@ -90,6 +90,24 @@
         "random_strength": 0.5455,
         "bagging_temperature": 0.0412
       },
+      "feature_importance": [
+        { "feature": "feature_response_time_ms", "importance": 0.0977 },
+        { "feature": "feature_arg_count", "importance": 0.0851 },
+        { "feature": "feature_payload_size", "importance": 0.0529 },
+        { "feature": "feature_response_size", "importance": 0.0350 },
+        { "feature": "feature_transport_type_streamable_http", "importance": 0.0308 },
+        { "feature": "feature_transport_type_stdio", "importance": 0.0299 },
+        { "feature": "feature_tool_name_filesystem.search", "importance": 0.0243 },
+        { "feature": "feature_external_url_flag_False", "importance": 0.0161 }
+      ],
+      "confusion_matrix": {
+        "model": "CatBoost",
+        "confusion_matrix": [
+          [275, 37, 14],
+          [6, 69, 0],
+          [0, 0, 99]
+        ]
+      },
       "models": [
         {
           "label": "CatBoost baseline",
