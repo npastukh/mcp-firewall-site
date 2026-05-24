@@ -933,12 +933,101 @@ function renderCatboostMetricCurves(models) {
   ];
 
   if (baselineTarget) {
-    baselineTarget.innerHTML = buildBeforeAfterComparisonMarkup(metricRows, "CatBoost baseline", "CatBoost tuned");
+    baselineTarget.innerHTML = buildMetricPairChartMarkup(metricRows, "CatBoost baseline", "CatBoost tuned");
   }
 
   if (tunedTarget) {
-    tunedTarget.innerHTML = renderDeltaMetricListMarkup(metricRows, "CatBoost baseline", "CatBoost tuned");
+    tunedTarget.innerHTML = buildDeltaBarChartMarkup(metricRows);
   }
+}
+
+function buildMetricPairChartMarkup(rows, beforeLabel, afterLabel) {
+  const max = Math.max(
+    ...rows.flatMap((row) => [Number(row.before || 0), Number(row.after || 0)]),
+    1
+  );
+
+  return `
+    <div class="chart-shell">
+      <div class="metric-pair-chart">
+        ${rows
+          .map(
+            (row) => `
+              <div class="metric-pair-item" title="${escapeHtml(`${row.label} | ${beforeLabel}: ${Number(row.before || 0).toFixed(4)} | ${afterLabel}: ${Number(row.after || 0).toFixed(4)}`)}">
+                <div class="metric-pair-values">
+                  <span class="metric-pair-top">${Number(row.after || 0).toFixed(4)}</span>
+                </div>
+                <div class="metric-pair-bars">
+                  <div class="metric-pair-track">
+                    <div class="metric-pair-fill accent" style="height:${(Number(row.before || 0) / max) * 100}%"></div>
+                  </div>
+                  <div class="metric-pair-track">
+                    <div class="metric-pair-fill teal" style="height:${(Number(row.after || 0) / max) * 100}%"></div>
+                  </div>
+                </div>
+                <div class="metric-pair-values">
+                  <span>${Number(row.before || 0).toFixed(4)}</span>
+                </div>
+                <div class="metric-pair-label">${escapeHtml(row.label)}</div>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+      <div class="chart-legend compact-legend">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--accent)"></span><strong>${escapeHtml(beforeLabel)}</strong></div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--teal)"></span><strong>${escapeHtml(afterLabel)}</strong></div>
+      </div>
+    </div>
+  `;
+}
+
+function buildDeltaBarChartMarkup(rows) {
+  const deltas = rows.map((row) => ({
+    label: row.label,
+    delta: Number(row.after || 0) - Number(row.before || 0),
+    before: Number(row.before || 0),
+    after: Number(row.after || 0),
+  }));
+  const maxDelta = Math.max(...deltas.map((row) => Math.abs(row.delta)), 0.0001);
+
+  return `
+    <div class="chart-shell">
+      <div class="metric-delta-chart">
+        ${deltas
+          .map(
+            (row) => `
+              <div class="metric-delta-item" title="${escapeHtml(`${row.label} | baseline: ${row.before.toFixed(4)} | tuned: ${row.after.toFixed(4)} | delta: ${row.delta >= 0 ? "+" : ""}${row.delta.toFixed(4)}`)}">
+                <div class="metric-delta-value">${row.delta >= 0 ? "+" : ""}${row.delta.toFixed(4)}</div>
+                <div class="metric-delta-track">
+                  <div class="metric-delta-fill teal" style="height:${(Math.abs(row.delta) / maxDelta) * 100}%"></div>
+                </div>
+                <div class="metric-delta-label">${escapeHtml(row.label)}</div>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+      <div class="comparison-list">
+        ${deltas
+          .map(
+            (row) => `
+              <div class="comparison-row">
+                <div class="comparison-title">
+                  <strong>${escapeHtml(row.label)}</strong>
+                  <span>${row.delta >= 0 ? "+" : ""}${row.delta.toFixed(4)}</span>
+                </div>
+                <div class="comparison-meta">
+                  <span>baseline: ${row.before.toFixed(4)}</span>
+                  <span>tuned: ${row.after.toFixed(4)}</span>
+                </div>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    </div>
+  `;
 }
 
 function renderGlinerMetricCurves(evaluation) {
