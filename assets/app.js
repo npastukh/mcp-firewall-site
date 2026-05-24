@@ -688,12 +688,16 @@ function renderBeforeAfterComparison(targetId, rows) {
   const target = document.getElementById(targetId);
   if (!target || !rows.length) return;
 
+  target.innerHTML = buildBeforeAfterComparisonMarkup(rows, "До обучения", "После LoRA");
+}
+
+function buildBeforeAfterComparisonMarkup(rows, beforeLabel, afterLabel) {
   const max = Math.max(
     ...rows.flatMap((row) => [Number(row.before || 0), Number(row.after || 0)]),
     1
   );
 
-  target.innerHTML = rows
+  return rows
     .map(
       (row) => `
         <div class="comparison-row">
@@ -702,20 +706,54 @@ function renderBeforeAfterComparison(targetId, rows) {
             <span>${formatDelta(row.before, row.after)}</span>
           </div>
           <div class="comparison-bars">
-            <div class="comparison-bar-row" title="${escapeHtml(`До обучения: ${Number(row.before || 0).toFixed(4)}`)}">
-              <span>До обучения</span>
+            <div class="comparison-bar-row" title="${escapeHtml(`${beforeLabel}: ${Number(row.before || 0).toFixed(4)}`)}">
+              <span>${escapeHtml(beforeLabel)}</span>
               <div class="bar-track">
                 <div class="bar-fill accent" style="width: ${(Number(row.before || 0) / max) * 100}%"></div>
               </div>
               <strong>${Number(row.before || 0).toFixed(4)}</strong>
             </div>
-            <div class="comparison-bar-row" title="${escapeHtml(`После LoRA: ${Number(row.after || 0).toFixed(4)}`)}">
-              <span>После LoRA</span>
+            <div class="comparison-bar-row" title="${escapeHtml(`${afterLabel}: ${Number(row.after || 0).toFixed(4)}`)}">
+              <span>${escapeHtml(afterLabel)}</span>
               <div class="bar-track">
                 <div class="bar-fill teal" style="width: ${(Number(row.after || 0) / max) * 100}%"></div>
               </div>
               <strong>${Number(row.after || 0).toFixed(4)}</strong>
             </div>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderDeltaMetricListMarkup(rows, beforeLabel, afterLabel) {
+  const deltaRows = rows.map((row) => ({
+    ...row,
+    delta: Number(row.after || 0) - Number(row.before || 0),
+  }));
+  const maxDelta = Math.max(...deltaRows.map((row) => Math.abs(row.delta)), 0.0001);
+
+  return deltaRows
+    .map(
+      (row) => `
+        <div class="comparison-row">
+          <div class="comparison-title">
+            <strong>${escapeHtml(row.label)}</strong>
+            <span>${escapeHtml(formatDelta(row.before, row.after))}</span>
+          </div>
+          <div class="comparison-bars">
+            <div class="comparison-bar-row" title="${escapeHtml(`${beforeLabel}: ${Number(row.before || 0).toFixed(4)} | ${afterLabel}: ${Number(row.after || 0).toFixed(4)}`)}">
+              <span>Прирост tuned</span>
+              <div class="bar-track">
+                <div class="bar-fill teal" style="width: ${(Math.abs(row.delta) / maxDelta) * 100}%"></div>
+              </div>
+              <strong>${row.delta >= 0 ? "+" : ""}${row.delta.toFixed(4)}</strong>
+            </div>
+          </div>
+          <div class="comparison-meta">
+            <span>baseline: ${Number(row.before || 0).toFixed(4)}</span>
+            <span>tuned: ${Number(row.after || 0).toFixed(4)}</span>
           </div>
         </div>
       `
@@ -880,31 +918,26 @@ function renderGlinerLabelComparison(rows) {
 }
 
 function renderCatboostMetricCurves(models) {
-  const metricKeys = [
-    { key: "balanced_accuracy", short: "BA" },
-    { key: "macro_precision", short: "Precision" },
-    { key: "macro_recall", short: "Recall" },
-    { key: "pr_auc_ovr", short: "PR-AUC" },
-    { key: "roc_auc_ovr", short: "ROC-AUC" },
-  ];
-
   const baselineTarget = document.getElementById("catboost-baseline-curve");
   const tunedTarget = document.getElementById("catboost-tuned-curve");
   const baseline = models[0];
   const tuned = models[1];
-  const sharedValues = [baseline, tuned]
-    .filter(Boolean)
-    .flatMap((model) => metricKeys.map((metric) => Number(model?.[metric.key] || 0)));
-  const sharedDomain = sharedValues.length
-    ? { min: Math.min(...sharedValues), max: Math.max(...sharedValues) }
-    : null;
+  if (!baseline || !tuned) return;
 
-  if (baselineTarget && baseline) {
-    baselineTarget.innerHTML = renderSingleSeriesMetricCurve(metricKeys, baseline.label, baseline, sharedDomain);
+  const metricRows = [
+    { label: "Balanced Accuracy", before: baseline.balanced_accuracy, after: tuned.balanced_accuracy },
+    { label: "Macro Precision", before: baseline.macro_precision, after: tuned.macro_precision },
+    { label: "Macro Recall", before: baseline.macro_recall, after: tuned.macro_recall },
+    { label: "PR-AUC OVR", before: baseline.pr_auc_ovr, after: tuned.pr_auc_ovr },
+    { label: "ROC-AUC OVR", before: baseline.roc_auc_ovr, after: tuned.roc_auc_ovr },
+  ];
+
+  if (baselineTarget) {
+    baselineTarget.innerHTML = buildBeforeAfterComparisonMarkup(metricRows, "CatBoost baseline", "CatBoost tuned");
   }
 
-  if (tunedTarget && tuned) {
-    tunedTarget.innerHTML = renderSingleSeriesMetricCurve(metricKeys, tuned.label, tuned, sharedDomain);
+  if (tunedTarget) {
+    tunedTarget.innerHTML = renderDeltaMetricListMarkup(metricRows, "CatBoost baseline", "CatBoost tuned");
   }
 }
 
