@@ -892,13 +892,19 @@ function renderCatboostMetricCurves(models) {
   const tunedTarget = document.getElementById("catboost-tuned-curve");
   const baseline = models[0];
   const tuned = models[1];
+  const sharedValues = [baseline, tuned]
+    .filter(Boolean)
+    .flatMap((model) => metricKeys.map((metric) => Number(model?.[metric.key] || 0)));
+  const sharedDomain = sharedValues.length
+    ? { min: Math.min(...sharedValues), max: Math.max(...sharedValues) }
+    : null;
 
   if (baselineTarget && baseline) {
-    baselineTarget.innerHTML = renderSingleSeriesMetricCurve(metricKeys, baseline.label, baseline);
+    baselineTarget.innerHTML = renderSingleSeriesMetricCurve(metricKeys, baseline.label, baseline, sharedDomain);
   }
 
   if (tunedTarget && tuned) {
-    tunedTarget.innerHTML = renderSingleSeriesMetricCurve(metricKeys, tuned.label, tuned);
+    tunedTarget.innerHTML = renderSingleSeriesMetricCurve(metricKeys, tuned.label, tuned, sharedDomain);
   }
 }
 
@@ -931,7 +937,7 @@ function renderGlinerMetricCurves(evaluation) {
   }
 }
 
-function renderSingleSeriesMetricCurve(metricKeys, label, values) {
+function renderSingleSeriesMetricCurve(metricKeys, label, values, yDomain = null) {
   const rows = metricKeys.map((metric, index) => ({
     x: index + 1,
     series: {
@@ -942,6 +948,7 @@ function renderSingleSeriesMetricCurve(metricKeys, label, values) {
   return renderLineChartMarkup({
     rows,
     xFormatter: (value) => metricKeys[Math.max(0, Math.min(metricKeys.length - 1, Math.round(value) - 1))].short,
+    yDomain,
     pointTitleFormatter: ({ x, seriesName, value }) => {
       const metric = metricKeys[Math.max(0, Math.min(metricKeys.length - 1, Math.round(x) - 1))];
       return `${seriesName}\n${metric.short}: ${Number(value).toFixed(4)}`;
@@ -1154,7 +1161,7 @@ function renderVerticalChartFromPairs(targetId, pairs, options = {}) {
   `;
 }
 
-function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter }) {
+function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter, yDomain = null }) {
   if (!rows.length) {
     return '<div class="empty-state compact-empty">Данные недоступны.</div>';
   }
@@ -1168,8 +1175,8 @@ function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter }) {
   const xValues = rows.map((row) => row.x);
   const seriesNames = Object.keys(rows[0].series);
   const yValues = rows.flatMap((row) => Object.values(row.series).map(Number));
-  const rawMin = Math.min(...yValues);
-  const rawMax = Math.max(...yValues);
+  const rawMin = yDomain ? Number(yDomain.min) : Math.min(...yValues);
+  const rawMax = yDomain ? Number(yDomain.max) : Math.max(...yValues);
   const rawRange = rawMax - rawMin;
   const paddingRatio = rawRange > 0 ? 0.12 : 0.05;
   const yPadding = rawRange > 0 ? rawRange * paddingRatio : Math.max(rawMax * paddingRatio, 0.02);
