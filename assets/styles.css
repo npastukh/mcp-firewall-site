@@ -789,6 +789,10 @@ body::before {
   height: auto;
 }
 
+.chart-hit-circle {
+  cursor: pointer;
+}
+
 .line-axis {
   stroke: rgba(100, 91, 82, 0.22);
   stroke-width: 1.5;
@@ -797,6 +801,32 @@ body::before {
 .line-axis-label {
   fill: var(--muted);
   font-size: 11px;
+}
+
+.metric-inline-list {
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid rgba(63, 52, 43, 0.10);
+  border-radius: var(--radius-md);
+  background: rgba(255, 248, 240, 0.72);
+}
+
+.metric-inline-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 0.92rem;
+}
+
+.metric-inline-row strong {
+  font-family: "Iowan Old Style", "Palatino Linotype", serif;
+}
+
+.metric-inline-row span {
+  color: var(--muted);
+  text-align: right;
 }
 
 .grouped-bars {

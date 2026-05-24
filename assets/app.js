@@ -1167,7 +1167,15 @@ function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter }) {
 
   const xValues = rows.map((row) => row.x);
   const seriesNames = Object.keys(rows[0].series);
-  const yMax = Math.max(...rows.flatMap((row) => Object.values(row.series).map(Number)), 1);
+  const yValues = rows.flatMap((row) => Object.values(row.series).map(Number));
+  const rawMin = Math.min(...yValues);
+  const rawMax = Math.max(...yValues);
+  const rawRange = rawMax - rawMin;
+  const paddingRatio = rawRange > 0 ? 0.12 : 0.05;
+  const yPadding = rawRange > 0 ? rawRange * paddingRatio : Math.max(rawMax * paddingRatio, 0.02);
+  const yMin = Math.max(0, rawMin - yPadding);
+  const yMax = rawMax + yPadding;
+  const yRange = yMax - yMin || 1;
   const xMin = Math.min(...xValues);
   const xMax = Math.max(...xValues);
   const xRange = xMax - xMin || 1;
@@ -1179,18 +1187,23 @@ function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter }) {
       const points = rows
         .map((row) => {
           const x = padding.left + ((row.x - xMin) / xRange) * plotWidth;
-          const y = padding.top + plotHeight - (Number(row.series[seriesName]) / yMax) * plotHeight;
+          const y = padding.top + plotHeight - ((Number(row.series[seriesName]) - yMin) / yRange) * plotHeight;
           return `${x},${y}`;
         })
         .join(" ");
       const dots = rows
         .map((row) => {
           const x = padding.left + ((row.x - xMin) / xRange) * plotWidth;
-          const y = padding.top + plotHeight - (Number(row.series[seriesName]) / yMax) * plotHeight;
+          const y = padding.top + plotHeight - ((Number(row.series[seriesName]) - yMin) / yRange) * plotHeight;
           const title = pointTitleFormatter
             ? pointTitleFormatter({ x: row.x, seriesName, value: Number(row.series[seriesName]) })
             : `${seriesName}\n${xFormatter(row.x)}: ${Number(row.series[seriesName]).toFixed(4)}`;
-          return `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}"><title>${escapeHtml(title)}</title></circle>`;
+          return `
+            <circle cx="${x}" cy="${y}" r="4.5" fill="${color}"></circle>
+            <circle cx="${x}" cy="${y}" r="12" fill="transparent" stroke="transparent" pointer-events="all" class="chart-hit-circle">
+              <title>${escapeHtml(title)}</title>
+            </circle>
+          `;
         })
         .join("");
       return `<polyline fill="none" stroke="${color}" stroke-width="3" points="${points}"></polyline>${dots}`;
@@ -1198,9 +1211,18 @@ function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter }) {
     .join("");
 
   const xLabels = rows
+      .map((row) => {
+        const x = padding.left + ((row.x - xMin) / xRange) * plotWidth;
+        return `<text x="${x}" y="${height - 10}" text-anchor="middle" class="line-axis-label">${escapeHtml(xFormatter(row.x))}</text>`;
+      })
+      .join("");
+
+  const summaryRows = rows
     .map((row) => {
-      const x = padding.left + ((row.x - xMin) / xRange) * plotWidth;
-      return `<text x="${x}" y="${height - 10}" text-anchor="middle" class="line-axis-label">${escapeHtml(xFormatter(row.x))}</text>`;
+      const values = seriesNames
+        .map((seriesName) => `${seriesName}: ${Number(row.series[seriesName]).toFixed(4)}`)
+        .join(" · ");
+      return `<div class="metric-inline-row"><strong>${escapeHtml(xFormatter(row.x))}</strong><span>${escapeHtml(values)}</span></div>`;
     })
     .join("");
 
@@ -1212,6 +1234,9 @@ function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter }) {
         ${seriesMarkup}
         ${xLabels}
       </svg>
+      <div class="metric-inline-list">
+        ${summaryRows}
+      </div>
       <div class="chart-legend compact-legend">
         ${seriesNames
           .map(
