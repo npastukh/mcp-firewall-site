@@ -334,7 +334,7 @@ async function initDashboardPage() {
     renderTopToolsByLabel(eda.catboost?.dataset?.top_tools_by_label || {});
     renderCatboostParams(eda.catboost?.training?.best_params || {});
     renderCatboostDeltaSummary(eda.catboost?.training?.models || []);
-    renderMetricComparison("catboost-comparison", eda.catboost?.training?.models || []);
+    renderMetricComparison("catboost-comparison", (eda.catboost?.training?.models || []).slice(0, 2));
     renderFeatureImportanceChart(eda.catboost?.training?.feature_importance || data?.evaluation?.feature_importance || []);
     renderConfusionMatrix(
       eda.catboost?.training?.confusion_matrix ? [eda.catboost.training.confusion_matrix] : data?.evaluation?.model_metrics || []
@@ -479,8 +479,6 @@ function renderNumericProfile(dataset) {
   if (!target) return;
 
   const byLabel = dataset.numeric_by_label || [];
-  const byDecision = dataset.risk_by_decision || [];
-
   target.innerHTML = `
     <div class="comparison-row">
       <div class="comparison-title">
@@ -490,7 +488,7 @@ function renderNumericProfile(dataset) {
         ${byLabel
           .map(
             (row) => `
-              <div class="comparison-bar-row">
+              <div class="comparison-bar-row" title="${escapeHtml(`${formatCategory(row.label, "label")}: ${Math.round(Number(row.avg_payload_size || 0))}`)}">
                 <span>${escapeHtml(formatCategory(row.label, "label"))}</span>
                 <div class="bar-track">
                   <div class="bar-fill ${barToneClass(row.label, "label")}" style="width: ${Math.min((Number(row.avg_payload_size || 0) / 6000) * 100, 100)}%"></div>
@@ -510,7 +508,7 @@ function renderNumericProfile(dataset) {
         ${byLabel
           .map(
             (row) => `
-              <div class="comparison-bar-row">
+              <div class="comparison-bar-row" title="${escapeHtml(`${formatCategory(row.label, "label")}: ${Math.round(Number(row.avg_response_time_ms || 0))} мс`)}">
                 <span>${escapeHtml(formatCategory(row.label, "label"))}</span>
                 <div class="bar-track">
                   <div class="bar-fill ${barToneClass(row.label, "label")}" style="width: ${Math.min((Number(row.avg_response_time_ms || 0) / 2000) * 100, 100)}%"></div>
@@ -524,16 +522,16 @@ function renderNumericProfile(dataset) {
     </div>
     <div class="comparison-row">
       <div class="comparison-title">
-        <strong>Средний risk score по решению</strong>
+        <strong>Средний risk score по классам</strong>
       </div>
       <div class="comparison-bars">
-        ${byDecision
+        ${byLabel
           .map(
             (row) => `
-              <div class="comparison-bar-row">
-                <span>${escapeHtml(formatDecision(row.decision))}</span>
+              <div class="comparison-bar-row" title="${escapeHtml(`${formatCategory(row.label, "label")}: ${Number(row.avg_risk_score || 0).toFixed(3)}`)}">
+                <span>${escapeHtml(formatCategory(row.label, "label"))}</span>
                 <div class="bar-track">
-                  <div class="bar-fill ${barToneClass(row.decision, "decision")}" style="width: ${Number(row.avg_risk_score || 0) * 100}%"></div>
+                  <div class="bar-fill ${barToneClass(row.label, "label")}" style="width: ${Number(row.avg_risk_score || 0) * 100}%"></div>
                 </div>
                 <strong>${Number(row.avg_risk_score || 0).toFixed(3)}</strong>
               </div>
@@ -560,7 +558,7 @@ function renderTopToolsByLabel(topToolsByLabel) {
                 ${rows
                   .map(
                     (row) => `
-                      <div class="bar-item">
+                      <div class="bar-item" title="${escapeHtml(`${row.tool}: ${row.count}`)}">
                         <div class="bar-meta">
                           <strong>${escapeHtml(row.tool)}</strong>
                           <span>${row.count}</span>
@@ -667,7 +665,7 @@ function renderMetricComparison(targetId, rows) {
             ${rows
               .map(
                 (row, index) => `
-                  <div class="comparison-bar-row">
+                  <div class="comparison-bar-row" title="${escapeHtml(`${row.label}: ${Number(row[key] || 0).toFixed(4)}`)}">
                     <span>${escapeHtml(row.label)}</span>
                     <div class="bar-track">
                       <div class="bar-fill ${index === 0 ? "accent" : index === 1 ? "teal" : "safe"}" style="width: ${
@@ -704,14 +702,14 @@ function renderBeforeAfterComparison(targetId, rows) {
             <span>${formatDelta(row.before, row.after)}</span>
           </div>
           <div class="comparison-bars">
-            <div class="comparison-bar-row">
+            <div class="comparison-bar-row" title="${escapeHtml(`До обучения: ${Number(row.before || 0).toFixed(4)}`)}">
               <span>До обучения</span>
               <div class="bar-track">
                 <div class="bar-fill accent" style="width: ${(Number(row.before || 0) / max) * 100}%"></div>
               </div>
               <strong>${Number(row.before || 0).toFixed(4)}</strong>
             </div>
-            <div class="comparison-bar-row">
+            <div class="comparison-bar-row" title="${escapeHtml(`После LoRA: ${Number(row.after || 0).toFixed(4)}`)}">
               <span>После LoRA</span>
               <div class="bar-track">
                 <div class="bar-fill teal" style="width: ${(Number(row.after || 0) / max) * 100}%"></div>
@@ -730,7 +728,8 @@ function renderGlinerOverview(gliner) {
   if (!target) return;
 
   const source = gliner.source_corpus || {};
-  const validation = gliner.evaluation?.after_validation || {};
+  const after = gliner.evaluation?.after || {};
+  const threshold = gliner.evaluation?.after_validation?.threshold ?? 0.99;
   const cards = [
     {
       label: "Строк в source corpus",
@@ -743,14 +742,14 @@ function renderGlinerOverview(gliner) {
       note: "В корпус включены natural language, shell, JSON, YAML, MCP request и code-like форматы.",
     },
     {
-      label: "Оптимальный threshold",
-      value: String(validation.threshold ?? "—"),
-      note: "На validation этот порог дал лучший баланс request-level и span-level качества.",
+      label: "Threshold для test",
+      value: String(threshold),
+      note: "Итоговая тестовая оценка GLiNER2 + LoRA в дипломе дана для threshold = 0.99.",
     },
     {
-      label: "Validation gated F1",
-      value: `${Number(validation.gated_f1 || 0).toFixed(4)}`,
-      note: "Итоговая опорная метрика semantic-stage после LoRA-дообучения.",
+      label: "Test gated F1",
+      value: `${Number(after.gated_f1 || 0).toFixed(4)}`,
+      note: "Итоговая span-level метрика на тестовой части после LoRA-дообучения.",
     },
   ];
 
@@ -787,14 +786,14 @@ function renderSplitComparison(splits) {
             <span>${row.rows} строк</span>
           </div>
           <div class="comparison-bars">
-            <div class="comparison-bar-row">
+            <div class="comparison-bar-row" title="${escapeHtml(`${row.label} safe: ${row.safe}`)}">
               <span>safe</span>
               <div class="bar-track">
                 <div class="bar-fill safe" style="width: ${(Number(row.safe || 0) / Number(row.rows || 1)) * 100}%"></div>
               </div>
               <strong>${row.safe}</strong>
             </div>
-            <div class="comparison-bar-row">
+            <div class="comparison-bar-row" title="${escapeHtml(`${row.label} suspicious: ${row.suspicious}`)}">
               <span>suspicious</span>
               <div class="bar-track">
                 <div class="bar-fill danger" style="width: ${(Number(row.suspicious || 0) / Number(row.rows || 1)) * 100}%"></div>
@@ -815,6 +814,20 @@ function renderThresholdCurve(rows) {
   target.innerHTML = renderLineChartMarkup({
     title: "request F1 / gated F1",
     xFormatter: (value) => Number(value).toFixed(2),
+    pointTitleFormatter: ({ x, seriesName, value }) => {
+      const sourceRow = rows.find((row) => Number(row.threshold) === Number(x));
+      if (!sourceRow) {
+        return `${seriesName}\nthreshold ${Number(x).toFixed(2)}\nvalue ${Number(value).toFixed(4)}`;
+      }
+      return [
+        `${seriesName}`,
+        `threshold: ${Number(sourceRow.threshold).toFixed(2)}`,
+        `value: ${Number(value).toFixed(4)}`,
+        `accuracy: ${Number(sourceRow.accuracy || 0).toFixed(4)}`,
+        `gated precision: ${Number(sourceRow.gated_precision || 0).toFixed(4)}`,
+        `gated recall: ${Number(sourceRow.gated_recall || 0).toFixed(4)}`,
+      ].join("\n");
+    },
     rows: rows.map((row) => ({
       x: Number(row.threshold),
       series: {
@@ -842,10 +855,9 @@ function renderGlinerLabelComparison(rows) {
         <thead>
           <tr>
             <th>Сущность</th>
-            <th>Support</th>
-            <th>До обучения</th>
-            <th>После LoRA</th>
-            <th>Δ</th>
+            <th>Precision</th>
+            <th>Recall</th>
+            <th>F1</th>
           </tr>
         </thead>
         <tbody>
@@ -854,10 +866,9 @@ function renderGlinerLabelComparison(rows) {
               (row) => `
                 <tr>
                   <td>${escapeHtml(formatCategory(row.label, "entity"))}</td>
-                  <td>${row.support}</td>
-                  <td>${Number(row.before_f1 || 0).toFixed(4)}</td>
+                  <td>${Number(row.after_precision || 0).toFixed(4)}</td>
+                  <td>${Number(row.after_recall || 0).toFixed(4)}</td>
                   <td>${Number(row.after_f1 || 0).toFixed(4)}</td>
-                  <td>${escapeHtml(formatDelta(row.before_f1, row.after_f1))}</td>
                 </tr>
               `
             )
@@ -931,6 +942,10 @@ function renderSingleSeriesMetricCurve(metricKeys, label, values) {
   return renderLineChartMarkup({
     rows,
     xFormatter: (value) => metricKeys[Math.max(0, Math.min(metricKeys.length - 1, Math.round(value) - 1))].short,
+    pointTitleFormatter: ({ x, seriesName, value }) => {
+      const metric = metricKeys[Math.max(0, Math.min(metricKeys.length - 1, Math.round(x) - 1))];
+      return `${seriesName}\n${metric.short}: ${Number(value).toFixed(4)}`;
+    },
   });
 }
 
@@ -943,6 +958,10 @@ function renderMultiStageMetricCurve(metricKeys, seriesRows) {
   return renderLineChartMarkup({
     rows,
     xFormatter: (value) => metricKeys[Math.max(0, Math.min(metricKeys.length - 1, Math.round(value) - 1))].short,
+    pointTitleFormatter: ({ x, seriesName, value }) => {
+      const metric = metricKeys[Math.max(0, Math.min(metricKeys.length - 1, Math.round(x) - 1))];
+      return `${seriesName}\n${metric.short}: ${Number(value).toFixed(4)}`;
+    },
   });
 }
 
@@ -1021,7 +1040,7 @@ function renderDonutChart(targetId, values, type, centerLabel = "") {
           stroke="${chartColor(key, type)}"
           stroke-dasharray="${stroke} ${circumference - stroke}"
           stroke-dashoffset="${-offset}"
-        ></circle>
+        ><title>${escapeHtml(`${formatCategory(key, type)}: ${value} (${(share * 100).toFixed(1)}%)`)}</title></circle>
       `;
       offset += stroke;
       return segment;
@@ -1076,7 +1095,7 @@ function renderVerticalChart(targetId, values, type, options = {}) {
           .map(([key, value]) => {
             const height = Math.max((Number(value) / max) * 100, 6);
             return `
-              <div class="vbar-item">
+              <div class="vbar-item" title="${escapeHtml(`${formatCategory(key, type)}: ${value}`)}">
                 <div class="vbar-value">${value}</div>
                 <div class="vbar-track">
                   <div class="vbar-fill" style="height:${height}%; background:${chartColor(key, type)}"></div>
@@ -1120,7 +1139,7 @@ function renderVerticalChartFromPairs(targetId, pairs, options = {}) {
         ${pairs
           .map(
             ([label, value]) => `
-              <div class="vbar-item">
+              <div class="vbar-item" title="${escapeHtml(`${label}: ${Number(value) < 1 ? Number(value).toFixed(4) : Math.round(Number(value))}`)}">
                 <div class="vbar-value">${Number(value) < 1 ? Number(value).toFixed(4) : Math.round(Number(value))}</div>
                 <div class="vbar-track">
                   <div class="vbar-fill" style="height:${Math.max((Number(value) / max) * 100, 6)}%; background:${color}"></div>
@@ -1135,7 +1154,7 @@ function renderVerticalChartFromPairs(targetId, pairs, options = {}) {
   `;
 }
 
-function renderLineChartMarkup({ rows, xFormatter }) {
+function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter }) {
   if (!rows.length) {
     return '<div class="empty-state compact-empty">Данные недоступны.</div>';
   }
@@ -1168,7 +1187,10 @@ function renderLineChartMarkup({ rows, xFormatter }) {
         .map((row) => {
           const x = padding.left + ((row.x - xMin) / xRange) * plotWidth;
           const y = padding.top + plotHeight - (Number(row.series[seriesName]) / yMax) * plotHeight;
-          return `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}"></circle>`;
+          const title = pointTitleFormatter
+            ? pointTitleFormatter({ x: row.x, seriesName, value: Number(row.series[seriesName]) })
+            : `${seriesName}\n${xFormatter(row.x)}: ${Number(row.series[seriesName]).toFixed(4)}`;
+          return `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}"><title>${escapeHtml(title)}</title></circle>`;
         })
         .join("");
       return `<polyline fill="none" stroke="${color}" stroke-width="3" points="${points}"></polyline>${dots}`;
@@ -1221,7 +1243,7 @@ function renderGroupedComparisonChartMarkup(rows, options) {
         ${rows
           .map(
             (row) => `
-              <div class="grouped-bar-row">
+              <div class="grouped-bar-row" title="${escapeHtml(`${formatCategory(row.label, options.type)} | ${options.leftLabel}: ${Number(row[options.leftKey] || 0).toFixed(4)} | ${options.rightLabel}: ${Number(row[options.rightKey] || 0).toFixed(4)}`)}">
                 <div class="grouped-bar-label">${escapeHtml(formatCategory(row.label, options.type))}</div>
                 <div class="grouped-bar-columns">
                   <div class="grouped-bar-track">
@@ -1324,7 +1346,7 @@ function renderBarList(targetId, values, type) {
       const width = (Number(value) / max) * 100;
       const share = total ? ((Number(value) / total) * 100).toFixed(1) : "0.0";
       return `
-        <div class="bar-item">
+        <div class="bar-item" title="${escapeHtml(`${formatCategory(key, type)}: ${value} (${share}%)`)}">
           <div class="bar-meta">
             <strong>${escapeHtml(formatCategory(key, type))}</strong>
             <span>${value} · ${share}%</span>
@@ -1345,7 +1367,7 @@ function renderLeaderboard(models) {
   target.innerHTML = sorted
     .map(
       (item) => `
-        <div class="bar-item">
+        <div class="bar-item" title="${escapeHtml(`${item.model}: ${Number(item.pr_auc_ovr).toFixed(4)}`)}">
           <div class="bar-meta">
             <strong>${escapeHtml(item.model)}</strong>
             <span>${Number(item.pr_auc_ovr).toFixed(4)}</span>
@@ -1366,7 +1388,7 @@ function renderFeatureImportance(features) {
   target.innerHTML = top
     .map(
       (item) => `
-        <div class="bar-item">
+        <div class="bar-item" title="${escapeHtml(`${cleanFeatureName(item.feature)}: ${Number(item.importance).toFixed(4)}`)}">
           <div class="bar-meta">
             <strong>${escapeHtml(cleanFeatureName(item.feature))}</strong>
             <span>${Number(item.importance).toFixed(4)}</span>
