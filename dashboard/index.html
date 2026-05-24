@@ -208,21 +208,27 @@
               дообучения.
             </p>
           </div>
-          <div class="chart-grid">
-            <article class="chart-card chart-card-wide">
-              <h3>CatBoost: baseline, tuned, hybrid</h3>
-              <div id="catboost-metric-curve"></div>
+          <div class="chart-grid chart-grid-halves">
+            <article class="chart-card">
+              <h3>CatBoost baseline</h3>
+              <div id="catboost-baseline-curve"></div>
             </article>
-            <article class="chart-card chart-card-wide">
+            <article class="chart-card">
+              <h3>CatBoost tuned</h3>
+              <div id="catboost-tuned-curve"></div>
+            </article>
+          </div>
+          <div class="chart-grid chart-grid-lower chart-grid-halves">
+            <article class="chart-card">
               <h3>GLiNER + LoRA: request-level до и после</h3>
               <div id="gliner-request-curve"></div>
             </article>
-          </div>
-          <div class="chart-grid chart-grid-lower">
-            <article class="chart-card chart-card-wide">
+            <article class="chart-card">
               <h3>GLiNER + LoRA: span-level до и после</h3>
               <div id="gliner-span-curve"></div>
             </article>
+          </div>
+          <div class="chart-grid chart-grid-lower chart-grid-halves">
             <article class="chart-card">
               <h3>Ключевые изменения</h3>
               <div id="summary-metrics" class="comparison-list"></div>

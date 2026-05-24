@@ -367,7 +367,7 @@ async function initDashboardPage() {
     ]);
     renderThresholdCurve(eda.gliner?.evaluation?.threshold_curve || []);
     renderGlinerLabelComparison(eda.gliner?.evaluation?.label_comparison || []);
-    renderCatboostMetricCurve(eda.catboost?.training?.models || []);
+    renderCatboostMetricCurves(eda.catboost?.training?.models || []);
     renderGlinerMetricCurves(eda.gliner?.evaluation || {});
     renderSummaryMetricChanges(eda);
   } catch (error) {
@@ -868,10 +868,7 @@ function renderGlinerLabelComparison(rows) {
   `;
 }
 
-function renderCatboostMetricCurve(models) {
-  const target = document.getElementById("catboost-metric-curve");
-  if (!target || !models.length) return;
-
+function renderCatboostMetricCurves(models) {
   const metricKeys = [
     { key: "balanced_accuracy", short: "BA" },
     { key: "macro_precision", short: "Precision" },
@@ -880,17 +877,18 @@ function renderCatboostMetricCurve(models) {
     { key: "roc_auc_ovr", short: "ROC-AUC" },
   ];
 
-  const rows = metricKeys.map((metric, index) => ({
-    x: index + 1,
-    series: Object.fromEntries(
-      models.map((model) => [model.label, Number(model[metric.key] || 0)])
-    ),
-  }));
+  const baselineTarget = document.getElementById("catboost-baseline-curve");
+  const tunedTarget = document.getElementById("catboost-tuned-curve");
+  const baseline = models[0];
+  const tuned = models[1];
 
-  target.innerHTML = renderLineChartMarkup({
-    rows,
-    xFormatter: (value) => metricKeys[Math.max(0, Math.min(metricKeys.length - 1, Math.round(value) - 1))].short,
-  });
+  if (baselineTarget && baseline) {
+    baselineTarget.innerHTML = renderSingleSeriesMetricCurve(metricKeys, baseline.label, baseline);
+  }
+
+  if (tunedTarget && tuned) {
+    tunedTarget.innerHTML = renderSingleSeriesMetricCurve(metricKeys, tuned.label, tuned);
+  }
 }
 
 function renderGlinerMetricCurves(evaluation) {
@@ -906,7 +904,6 @@ function renderGlinerMetricCurves(evaluation) {
     requestTarget.innerHTML = renderMultiStageMetricCurve(requestMetrics, [
       { label: "До обучения", values: evaluation.before || {} },
       { label: "После LoRA", values: evaluation.after || {} },
-      { label: "После валидации", values: evaluation.after_validation || {} },
     ]);
   }
 
@@ -919,9 +916,22 @@ function renderGlinerMetricCurves(evaluation) {
     spanTarget.innerHTML = renderMultiStageMetricCurve(spanMetrics, [
       { label: "До обучения", values: evaluation.before || {} },
       { label: "После LoRA", values: evaluation.after || {} },
-      { label: "После валидации", values: evaluation.after_validation || {} },
     ]);
   }
+}
+
+function renderSingleSeriesMetricCurve(metricKeys, label, values) {
+  const rows = metricKeys.map((metric, index) => ({
+    x: index + 1,
+    series: {
+      [label]: Number(values?.[metric.key] || 0),
+    },
+  }));
+
+  return renderLineChartMarkup({
+    rows,
+    xFormatter: (value) => metricKeys[Math.max(0, Math.min(metricKeys.length - 1, Math.round(value) - 1))].short,
+  });
 }
 
 function renderMultiStageMetricCurve(metricKeys, seriesRows) {
@@ -944,7 +954,6 @@ function renderSummaryMetricChanges(eda) {
   const tuned = eda.catboost?.training?.models?.[1] || {};
   const before = eda.gliner?.evaluation?.before || {};
   const after = eda.gliner?.evaluation?.after || {};
-  const validated = eda.gliner?.evaluation?.after_validation || {};
 
   const rows = [
     {
@@ -962,8 +971,8 @@ function renderSummaryMetricChanges(eda) {
     {
       label: "GLiNER gated F1",
       before: before.gated_f1,
-      after: validated.gated_f1,
-      note: "Итоговое span-качество на validation threshold.",
+      after: after.gated_f1,
+      note: "Сравнение span-level качества до и после LoRA-дообучения.",
     },
   ];
 
