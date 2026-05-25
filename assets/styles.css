@@ -344,6 +344,14 @@ body::before {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.chart-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.stage1-top-grid {
+  grid-template-columns: minmax(320px, 0.86fr) minmax(520px, 1.14fr);
+}
+
 .chart-grid-halves .chart-card-wide {
   grid-column: auto;
 }
@@ -743,23 +751,58 @@ body::before {
   gap: 14px;
 }
 
-#label-chart .legend-item {
-  display: grid;
-  grid-template-columns: 12px minmax(0, auto) auto;
-  align-items: center;
-  column-gap: 10px;
+#label-chart .chart-shell-donut {
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: start;
 }
 
-#label-chart .legend-swatch {
-  grid-column: 1;
+#label-chart .donut-chart {
+  width: 150px;
+  height: 150px;
+}
+
+#label-chart .donut-center {
+  margin-top: -108px;
+}
+
+#label-chart .legend-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
 }
 
 #label-chart .legend-item strong {
-  grid-column: 2;
+  min-width: 108px;
 }
 
 #label-chart .legend-item span {
-  grid-column: 3;
+  flex: 0 0 auto;
+}
+
+#label-chart .legend-swatch {
+  flex: 0 0 auto;
+}
+
+#scenario-chart .chart-shell {
+  min-height: 100%;
+}
+
+#scenario-chart .vbar-chart {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 210px;
+}
+
+#scenario-chart .vbar-track {
+  height: 170px;
+}
+
+#scenario-chart .vbar-item {
+  grid-template-rows: auto 170px minmax(5.8em, auto);
+}
+
+#scenario-chart .vbar-label {
+  min-height: 5.8em;
 }
 
 .vbar-value {
@@ -1067,6 +1110,11 @@ body::before {
   gap: 10px;
 }
 
+.mini-chart-card .line-chart,
+.delta-feature-card .line-chart {
+  min-height: 240px;
+}
+
 .metric-inline-list {
   display: grid;
   gap: 8px;
@@ -1137,11 +1185,21 @@ body::before {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+#catboost-split-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+#catboost-split-grid .scheme-card {
+  height: 100%;
+}
+
 .scheme-card {
   padding: 18px 20px;
   border: 1px solid rgba(63, 52, 43, 0.10);
   border-radius: var(--radius-md);
   background: rgba(255, 248, 240, 0.75);
+  min-width: 0;
 }
 
 .scheme-card strong {
@@ -1149,6 +1207,8 @@ body::before {
   margin-bottom: 8px;
   font-family: "Iowan Old Style", "Palatino Linotype", serif;
   font-size: 1.12rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .bar-item {
@@ -1277,6 +1337,16 @@ body::before {
   margin-bottom: 16px;
 }
 
+.rule-layer-summary-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.rule-layer-note {
+  margin: 0 0 16px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 .rule-summary-card,
 .example-detail-card,
 .mini-pipeline-card {
@@ -1310,7 +1380,7 @@ body::before {
 
 .decision-examples-layout {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
   gap: 16px;
   align-items: start;
 }

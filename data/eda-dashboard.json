@@ -131,7 +131,7 @@
       ]
     },
     "rule_layer": {
-      "total_rules": 13,
+      "total_rules": 26,
       "triggered_rules": 4,
       "core_rules": [
         {

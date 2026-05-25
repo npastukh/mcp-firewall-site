@@ -568,18 +568,14 @@ function renderRuleLayer(ruleLayer) {
 
   const rules = ruleLayer.core_rules || [];
   target.innerHTML = `
-    <div class="rule-layer-summary">
+    <div class="rule-layer-summary rule-layer-summary-single">
       <article class="rule-summary-card">
         <span class="kpi-label">Всего правил</span>
         <strong class="kpi-value">${Number(ruleLayer.total_rules || 0)}</strong>
-        <p class="kpi-note">Библиотека первого этапа объединяет блокирующие и предупреждающие rule-based проверки.</p>
-      </article>
-      <article class="rule-summary-card">
-        <span class="kpi-label">Сработали в датасете</span>
-        <strong class="kpi-value">${Number(ruleLayer.triggered_rules || rules.length)}</strong>
-        <p class="kpi-note">Ниже показаны основные правила, которые реально участвовали в синтетическом лабораторном корпусе.</p>
+        <p class="kpi-note">В библиотеке первого этапа используются блокирующие и предупреждающие rule-based проверки.</p>
       </article>
     </div>
+    <p class="rule-layer-note">Ниже показаны ключевые правила, которые лучше всего иллюстрируют работу rule-based слоя на событиях первого этапа.</p>
     <div class="matrix-table-wrap">
       <table class="metrics-table rules-table">
         <thead>
@@ -1135,7 +1131,9 @@ function buildCatboostSmallMultiples(rows) {
                       min: Math.min(Number(row.before || 0), Number(row.after || 0)) - 0.01,
                       max: Math.max(Number(row.before || 0), Number(row.after || 0)) + 0.01,
                     },
-                    compact: true,
+                    compact: false,
+                    showSummary: false,
+                    showLegend: false,
                   })}
                 </div>
               </div>
@@ -1189,6 +1187,7 @@ function buildCatboostDeltaOverview(rows) {
             min: 0,
             max: maxDelta + 0.003,
           },
+          showLegend: false,
         })}
       </div>
       <div class="comparison-list comparison-list-compact">
@@ -1554,6 +1553,8 @@ function renderLineChartMarkup({
   yDomain = null,
   summary = "",
   compact = false,
+  showSummary = !compact,
+  showLegend = !compact,
 }) {
   if (!rows.length) {
     return '<div class="empty-state compact-empty">Данные недоступны.</div>';
@@ -1637,8 +1638,8 @@ function renderLineChartMarkup({
         ${seriesMarkup}
         ${xLabels}
       </svg>
-      ${compact ? "" : `<div class="metric-inline-list">${summaryRows}</div>`}
-      ${compact ? "" : `<div class="chart-legend compact-legend">
+      ${showSummary ? `<div class="metric-inline-list">${summaryRows}</div>` : ""}
+      ${showLegend ? `<div class="chart-legend compact-legend">
         ${seriesNames
           .map(
             (name, index) => `
@@ -1649,7 +1650,7 @@ function renderLineChartMarkup({
             `
           )
           .join("")}
-      </div>`}
+      </div>` : ""}
     </div>
   `;
 }

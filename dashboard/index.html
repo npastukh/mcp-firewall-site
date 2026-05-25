@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MCP Firewall — аналитический дашборд</title>
-    <link rel="stylesheet" href="../assets/styles.css?v=20260525-dashboard-rework-3" />
+    <link rel="stylesheet" href="../assets/styles.css?v=20260525-dashboard-rework-11" />
   </head>
   <body data-page="dashboard">
     <div class="site-shell">
@@ -35,7 +35,7 @@
             <p class="section-note">Первый этап объединяет rule-based проверки и ML-классификацию MCP-событий.</p>
           </div>
           <div class="stats-grid" id="catboost-overview"></div>
-          <div class="chart-grid chart-grid-halves">
+          <div class="chart-grid chart-grid-halves stage1-top-grid">
             <article class="chart-card chart-card-wide">
               <h3>Классы событий</h3>
               <div id="label-chart"></div>
@@ -55,13 +55,13 @@
               <div id="catboost-top-tools"></div>
             </article>
           </div>
-          <div class="chart-grid chart-grid-lower">
+          <div class="chart-grid chart-grid-lower chart-grid-single">
             <article class="chart-card chart-card-wide">
               <h3>Rule-based слой</h3>
               <div id="catboost-rule-layer"></div>
             </article>
           </div>
-          <div class="chart-grid chart-grid-lower">
+          <div class="chart-grid chart-grid-lower chart-grid-single">
             <article class="chart-card chart-card-wide">
               <h3>Примеры решений системы</h3>
               <div id="catboost-decision-examples"></div>
@@ -101,11 +101,13 @@
               <div id="catboost-params"></div>
             </article>
           </div>
-          <div class="chart-grid chart-grid-lower chart-grid-halves">
+          <div class="chart-grid chart-grid-lower chart-grid-single">
             <article class="chart-card chart-card-wide">
               <h3>Изменение основных метрик CatBoost</h3>
               <div id="catboost-baseline-curve"></div>
             </article>
+          </div>
+          <div class="chart-grid chart-grid-lower chart-grid-single">
             <article class="chart-card chart-card-wide">
               <h3>Прирост tuned относительно baseline</h3>
               <div id="catboost-tuned-curve"></div>
@@ -174,17 +176,19 @@
             </div>
             <p class="section-note">Сначала показан подбор порога, затем итоговое качество модели после LoRA-дообучения.</p>
           </div>
-          <div class="chart-grid">
+          <div class="chart-grid chart-grid-single">
             <article class="chart-card chart-card-wide">
               <h3>Threshold sweep</h3>
               <div id="gliner-threshold-chart"></div>
             </article>
           </div>
-          <div class="chart-grid chart-grid-halves">
+          <div class="chart-grid chart-grid-lower chart-grid-single">
             <article class="chart-card chart-card-wide">
               <h3>Request-level: до и после</h3>
               <div id="gliner-request-curve"></div>
             </article>
+          </div>
+          <div class="chart-grid chart-grid-lower chart-grid-single">
             <article class="chart-card chart-card-wide">
               <h3>Span-level: до и после</h3>
               <div id="gliner-span-curve"></div>
@@ -200,7 +204,7 @@
       </main>
     </div>
 
-    <script src="../assets/site-config.js?v=20260525-dashboard-rework-3"></script>
-    <script src="../assets/app.js?v=20260525-dashboard-rework-3"></script>
+    <script src="../assets/site-config.js?v=20260525-dashboard-rework-11"></script>
+    <script src="../assets/app.js?v=20260525-dashboard-rework-11"></script>
   </body>
 </html>
