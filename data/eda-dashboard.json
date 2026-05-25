@@ -221,7 +221,7 @@
         "scenario_type": "private_host_access",
         "payload_size": 332,
         "response_time_ms": 32,
-        "risk_score": 0.40,
+        "risk_score": 0.94,
         "rule_names": ["private_address_access"],
         "rationale": "Rule-based слой заблокировал запрос к приватному metadata-адресу."
       },
@@ -233,7 +233,7 @@
         "scenario_type": "sensitive_file_access",
         "payload_size": 358,
         "response_time_ms": 67,
-        "risk_score": 0.70,
+        "risk_score": 0.97,
         "rule_names": ["sensitive_path_access", "path_outside_safe_roots"],
         "rationale": "Система заблокировала попытку чтения чувствительного файла за пределами безопасных корней."
       }

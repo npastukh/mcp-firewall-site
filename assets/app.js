@@ -367,7 +367,6 @@ async function initDashboardPage() {
     renderArchitecture(data || {});
     renderFinalFindings(eda, data || {});
     renderFinalImplementation();
-    renderSummaryMetricChanges(eda);
   } catch (error) {
     const target = document.getElementById("catboost-overview");
     if (target) {
@@ -1051,6 +1050,7 @@ function renderThresholdCurve(rows) {
       ].join("\n");
     },
     pointLabelOffsetFormatter: ({ seriesIndex }) => (seriesIndex === 0 ? -12 : 18),
+    showSummary: false,
     rows: chartRows,
   });
 }
@@ -1288,55 +1288,6 @@ function renderMultiStageMetricCurve(metricKeys, seriesRows) {
   });
 }
 
-function renderSummaryMetricChanges(eda) {
-  const target = document.getElementById("summary-metrics");
-  if (!target) return;
-
-  const baseline = eda.catboost?.training?.models?.[0] || {};
-  const tuned = eda.catboost?.training?.models?.[1] || {};
-  const before = eda.gliner?.evaluation?.before || {};
-  const after = eda.gliner?.evaluation?.after || {};
-
-  const rows = [
-    {
-      label: "CatBoost Balanced Accuracy",
-      before: baseline.balanced_accuracy,
-      after: tuned.balanced_accuracy,
-      note: "Изменение после подбора гиперпараметров.",
-    },
-    {
-      label: "GLiNER request F1",
-      before: before.f1,
-      after: after.f1,
-      note: "Сравнение до и после LoRA-дообучения.",
-    },
-    {
-      label: "GLiNER gated F1",
-      before: before.gated_f1,
-      after: after.gated_f1,
-      note: "Сравнение span-level качества до и после LoRA-дообучения.",
-    },
-  ];
-
-  target.innerHTML = rows
-    .map(
-      (row) => `
-        <div class="comparison-row">
-          <div class="comparison-title">
-            <strong>${escapeHtml(row.label)}</strong>
-            <span>${escapeHtml(formatDelta(row.before, row.after))}</span>
-          </div>
-          <div class="comparison-meta">
-            <span>до: ${Number(row.before || 0).toFixed(4)}</span>
-            <span>после: ${Number(row.after || 0).toFixed(4)}</span>
-          </div>
-          <p class="kpi-note">${escapeHtml(row.note)}</p>
-        </div>
-      `
-    )
-    .join("");
-}
-
 function renderFinalFindings(eda, data) {
   const target = document.getElementById("final-findings");
   if (!target) return;
@@ -1351,22 +1302,18 @@ function renderFinalFindings(eda, data) {
 
   const cards = [
     {
-      title: "Rule-based слой",
-      text: "Явные нарушения фиксируются правилами до подключения более тяжёлого semantic-stage.",
+      title: "Правила",
+      text: "Явные нарушения отсекаются до semantic-stage.",
     },
     {
-      title: "Лидер первого этапа",
-      text: `CatBoost показал лучший результат среди моделей первого этапа, включая PR-AUC OVR ${Number(bestModel?.pr_auc_ovr || 0).toFixed(4)}.`,
+      title: "CatBoost",
+      text: `Лучший результат первого этапа: PR-AUC OVR ${Number(bestModel?.pr_auc_ovr || 0).toFixed(4)}.`,
     },
     {
-      title: "Эффект LoRA",
-      text: `После дообучения GLiNER улучшил request-level F1 до ${Number(after.f1 || 0).toFixed(4)} и gated F1 до ${Number(after.gated_f1 || 0).toFixed(4)}.`,
-    },
-    {
-      title: "Выбранный порог",
+      title: "LoRA",
       text: bestThreshold
-        ? `На валидационной части лучший баланс показал threshold ${Number(bestThreshold.threshold).toFixed(2)}.`
-        : "Порог semantic-stage подбирался по валидационной части датасета.",
+        ? `После дообучения request F1 вырос до ${Number(after.f1 || 0).toFixed(4)}, gated F1 до ${Number(after.gated_f1 || 0).toFixed(4)}; выбран threshold ${Number(bestThreshold.threshold).toFixed(2)}.`
+        : `После дообучения request F1 вырос до ${Number(after.f1 || 0).toFixed(4)}, gated F1 до ${Number(after.gated_f1 || 0).toFixed(4)}.`,
     },
   ];
 
@@ -1388,16 +1335,16 @@ function renderFinalImplementation() {
 
   const items = [
     {
-      title: "Этап 1: Rules + CatBoost",
-      text: "Rule-based проверки и табличная ML-классификация событий используются как основной рабочий контур.",
+      title: "Этап 1",
+      text: "Rules + CatBoost",
     },
     {
-      title: "Этап 2: GLiNER + LoRA",
-      text: "Semantic-stage подключается только к подозрительным случаям и уточняет итоговое решение по тексту запроса.",
+      title: "Этап 2",
+      text: "GLiNER + LoRA для подозрительных случаев",
     },
     {
-      title: "Демонстрационный стенд",
-      text: "GitHub Pages дашборд и serverless API в Yandex Cloud собирают итоговую рабочую демонстрацию проекта.",
+      title: "Инфраструктура",
+      text: "GitHub Pages + serverless API в Yandex Cloud",
     },
   ];
 
@@ -1423,6 +1370,8 @@ function renderDonutChart(targetId, values, type, centerLabel = "") {
     target.innerHTML = '<div class="empty-state compact-empty">Данные недоступны.</div>';
     return;
   }
+
+  const emphasizeLegendTotal = targetId === "label-chart" || targetId === "gliner-balance-chart";
 
   const circumference = 2 * Math.PI * 44;
   let offset = 0;
@@ -1454,12 +1403,24 @@ function renderDonutChart(targetId, values, type, centerLabel = "") {
           <circle class="donut-ring-bg" cx="60" cy="60" r="44"></circle>
           ${segments}
         </svg>
-        <div class="donut-center">
+        ${
+          emphasizeLegendTotal
+            ? ""
+            : `<div class="donut-center">
           <strong>${total}</strong>
           <span>${escapeHtml(centerLabel)}</span>
-        </div>
+        </div>`
+        }
       </div>
       <div class="chart-legend">
+        ${
+          emphasizeLegendTotal
+            ? `<div class="legend-total">
+              <strong>${total}</strong>
+              <span>${escapeHtml(centerLabel)}</span>
+            </div>`
+            : ""
+        }
         ${entries
           .map(([key, value]) => {
             const share = ((Number(value) / total) * 100).toFixed(1);
@@ -1828,22 +1789,22 @@ function renderArchitecture(data) {
     {
       step: "01",
       title: "Агентный запрос",
-      text: "Пользовательский текст сначала интерпретируется в структурированный MCP tools/call.",
+      text: "Текст запроса преобразуется в MCP event.",
     },
     {
       step: "02",
       title: "Rules + CatBoost",
-      text: `Базовый контур ${scheme} проверяет правила, признаки и риск-оценку для каждого события.`,
+      text: `Контур ${scheme} проверяет правила и признаки события.`,
     },
     {
       step: "03",
       title: "GLiNER + LoRA",
-      text: "Полнотекстовый semantic-stage подключается только к подозрительным кейсам, а не ко всем запросам подряд.",
+      text: "Semantic-stage включается только для подозрительных случаев.",
     },
     {
       step: "04",
       title: "Final decision",
-      text: "Система возвращает общий verdict и объяснение, какой контур повлиял на итоговое решение.",
+      text: "Система возвращает итоговое решение и объяснение.",
     },
   ];
 
@@ -2256,16 +2217,10 @@ function formatDelta(before, after) {
 }
 
 function formatExampleRiskValue(row) {
-  if (row?.decision === "block" && Array.isArray(row.rule_names) && row.rule_names.length > 0) {
-    return "по правилу";
-  }
   return Number(row?.risk_score || 0).toFixed(2);
 }
 
 function formatExampleRiskLabel(row) {
-  if (row?.decision === "block" && Array.isArray(row.rule_names) && row.rule_names.length > 0) {
-    return "block by rule";
-  }
   return `risk ${Number(row?.risk_score || 0).toFixed(2)}`;
 }
 
