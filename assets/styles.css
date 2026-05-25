@@ -321,7 +321,8 @@ body::before {
 
 .panel-summary .signal-card p,
 .panel-summary .stage-card p,
-.panel-summary .pipeline-card p {
+.panel-summary .pipeline-card p,
+.panel-summary .architecture-edge-card p {
   font-size: 0.98rem;
   line-height: 1.45;
 }
@@ -388,8 +389,54 @@ body::before {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.dashboard-pipeline .pipeline-card {
-  min-height: 160px;
+.dashboard-pipeline {
+  display: grid;
+  gap: 18px;
+}
+
+.architecture-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.architecture-edge-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.architecture-main-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr) 28px minmax(0, 1fr) 28px minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.architecture-main-card {
+  min-height: 150px;
+}
+
+.architecture-edge-card {
+  min-width: 280px;
+  padding: 16px 18px;
+  border: 1px solid rgba(63, 52, 43, 0.10);
+  border-radius: var(--radius-md);
+  background: rgba(255, 248, 240, 0.72);
+}
+
+.architecture-edge-card strong {
+  display: block;
+  font-family: "Iowan Old Style", "Palatino Linotype", serif;
+  font-size: 1.08rem;
+}
+
+.architecture-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 1.35rem;
+  font-weight: 700;
 }
 
 .pipeline-step {
@@ -792,10 +839,6 @@ body::before {
   line-height: 1.2;
 }
 
-#label-chart .chart-legend {
-  gap: 12px;
-}
-
 #label-chart .chart-shell-donut,
 #gliner-balance-chart .chart-shell-donut {
   grid-template-columns: 240px minmax(0, 1fr);
@@ -813,6 +856,21 @@ body::before {
 #gliner-balance-chart .donut-chart {
   width: 240px;
   height: 240px;
+}
+
+#label-chart .chart-shell-donut {
+  grid-template-columns: 220px minmax(260px, 1fr);
+}
+
+#label-chart .donut-visual,
+#label-chart .donut-chart {
+  width: 220px;
+  height: 220px;
+}
+
+#label-chart .chart-legend {
+  min-width: 260px;
+  gap: 10px;
 }
 
 #gliner-balance-chart .chart-shell-donut {
@@ -852,9 +910,17 @@ body::before {
 
 #label-chart .legend-item {
   display: grid;
-  grid-template-columns: 16px minmax(120px, 1fr) auto;
+  grid-template-columns: 16px 130px 104px;
   align-items: center;
   gap: 8px 12px;
+}
+
+#label-chart .legend-item strong {
+  font-size: 0.95rem;
+}
+
+#label-chart .legend-item span:last-child {
+  font-size: 0.95rem;
 }
 
 #label-chart .legend-item span:last-child,
@@ -1859,6 +1925,7 @@ a {
   .rule-layer-summary,
   .decision-examples-layout,
   .mini-pipeline-grid,
+  .architecture-main-row,
   .final-summary-grid,
   .detail-grid {
     grid-template-columns: 1fr;

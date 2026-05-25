@@ -1292,8 +1292,6 @@ function renderFinalFindings(eda, data) {
   const target = document.getElementById("final-findings");
   if (!target) return;
 
-  const bestModel = data?.evaluation?.model_metrics?.find((row) => row.model === "CatBoost");
-  const after = eda?.gliner?.evaluation?.after || {};
   const bestThreshold =
     eda?.gliner?.evaluation?.threshold_curve?.reduce(
       (winner, row) => (Number(row.gated_f1 || 0) > Number(winner?.gated_f1 || 0) ? row : winner),
@@ -1303,17 +1301,17 @@ function renderFinalFindings(eda, data) {
   const cards = [
     {
       title: "Правила",
-      text: "Явные нарушения отсекаются до semantic-stage.",
+      text: "Явные нарушения фиксируются до подключения semantic-stage.",
     },
     {
       title: "CatBoost",
-      text: "В первом этапе основным рабочим контуром выбрана связка правил и CatBoost.",
+      text: "В первом этапе основной рабочий контур построен на связке правил и CatBoost.",
     },
     {
       title: "LoRA",
       text: bestThreshold
-        ? `После дообучения semantic-stage точнее обрабатывает подозрительные запросы; для рабочего контура выбран threshold ${Number(bestThreshold.threshold).toFixed(2)}.`
-        : "После дообучения semantic-stage точнее обрабатывает подозрительные запросы.",
+        ? `После дообучения semantic-stage устойчивее обрабатывает подозрительные запросы; для рабочего контура выбран threshold ${Number(bestThreshold.threshold).toFixed(2)}.`
+        : "После дообучения semantic-stage устойчивее обрабатывает подозрительные запросы.",
     },
   ];
 
@@ -1335,26 +1333,28 @@ function renderFinalImplementation() {
 
   const items = [
     {
-      title: "Этап 1",
-      text: "Rules + CatBoost",
+      title: "Основной контур",
+      text: "Rules + CatBoost для базовой проверки каждого события.",
     },
     {
-      title: "Этап 2",
-      text: "GLiNER + LoRA для подозрительных случаев",
+      title: "Semantic-stage",
+      text: "GLiNER + LoRA подключается только к подозрительным случаям.",
     },
     {
       title: "Инфраструктура",
-      text: "GitHub Pages + serverless API в Yandex Cloud",
+      text: "GitHub Pages и serverless API в Yandex Cloud собирают рабочий демонстрационный стенд.",
     },
   ];
 
   target.innerHTML = items
     .map(
       (item) => `
-        <article class="stage-card">
-          <h3>${escapeHtml(item.title)}</h3>
-          <p>${escapeHtml(item.text)}</p>
-        </article>
+        <div class="comparison-row comparison-row-tight">
+          <div class="comparison-title">
+            <strong>${escapeHtml(item.title)}</strong>
+          </div>
+          <p class="kpi-note">${escapeHtml(item.text)}</p>
+        </div>
       `
     )
     .join("");
@@ -1787,38 +1787,57 @@ function renderArchitecture(data) {
   const scheme = data.evaluation?.summary?.current_scheme || "Rules + CatBoost";
   const cards = [
     {
-      step: "01",
       title: "Текстовый запрос",
       text: "Текст запроса преобразуется в MCP event.",
     },
     {
-      step: "02",
       title: "Rules + CatBoost",
       text: `Контур ${scheme} проверяет правила и признаки события.`,
     },
     {
-      step: "03",
       title: "GLiNER + LoRA",
       text: "Semantic-stage включается только для подозрительных случаев.",
     },
     {
-      step: "04",
       title: "Итоговое решение",
       text: "Система возвращает итоговое решение и объяснение.",
     },
   ];
 
-  target.innerHTML = cards
-    .map(
-      (card) => `
-        <article class="pipeline-card">
-          <span class="pipeline-step">${escapeHtml(card.step)}</span>
-          <h3>${escapeHtml(card.title)}</h3>
-          <p>${escapeHtml(card.text)}</p>
+  target.innerHTML = `
+    <div class="architecture-shell">
+      <div class="architecture-edge-row architecture-edge-row-top">
+        <article class="architecture-edge-card">
+          <span class="signal-label">Источник</span>
+          <strong>Агент / MCP-клиент</strong>
         </article>
-      `
-    )
-    .join("");
+      </div>
+      <div class="architecture-main-row">
+        ${cards
+          .map(
+            (card, index) => `
+              <article class="pipeline-card architecture-main-card">
+                <span class="pipeline-step">${String(index + 1).padStart(2, "0")}</span>
+                <h3>${escapeHtml(card.title)}</h3>
+                <p>${escapeHtml(card.text)}</p>
+              </article>
+              ${index < cards.length - 1 ? '<span class="architecture-arrow" aria-hidden="true">→</span>' : ""}
+            `
+          )
+          .join("")}
+      </div>
+      <div class="architecture-edge-row architecture-edge-row-bottom">
+        <article class="architecture-edge-card">
+          <span class="signal-label">Назначение</span>
+          <strong>MCP-сервер и внешние инструменты</strong>
+        </article>
+        <article class="architecture-edge-card">
+          <span class="signal-label">Артефакты</span>
+          <strong>Логи, датасет и дашборд</strong>
+        </article>
+      </div>
+    </div>
+  `;
 }
 
 function renderBarList(targetId, values, type) {
