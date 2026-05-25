@@ -129,7 +129,115 @@
           "roc_auc_ovr": 0.9874
         }
       ]
-    }
+    },
+    "rule_layer": {
+      "total_rules": 13,
+      "triggered_rules": 4,
+      "core_rules": [
+        {
+          "name": "tool_server_mismatch",
+          "severity": "block",
+          "coverage": 142,
+          "detects": "несоответствие инструмента и целевого сервера",
+          "example": "filesystem.search -> filesystem-server"
+        },
+        {
+          "name": "sensitive_path_access",
+          "severity": "block",
+          "coverage": 87,
+          "detects": "обращение к чувствительным путям и служебным файлам",
+          "example": "/etc/passwd, /secrets/prod.env"
+        },
+        {
+          "name": "path_outside_safe_roots",
+          "severity": "warn",
+          "coverage": 87,
+          "detects": "выход за пределы разрешённых рабочих директорий",
+          "example": "чтение вне /workspace/project"
+        },
+        {
+          "name": "private_address_access",
+          "severity": "block",
+          "coverage": 86,
+          "detects": "доступ к приватным или metadata-адресам",
+          "example": "127.0.0.1, 169.254.169.254"
+        }
+      ]
+    },
+    "sample_events": [
+      {
+        "id": "E-01",
+        "label": "normal",
+        "decision": "allow",
+        "tool_name": "filesystem.search",
+        "scenario_type": "benign_usage",
+        "payload_size": 774,
+        "response_time_ms": 137,
+        "risk_score": 0.05,
+        "rule_names": [],
+        "rationale": "Блокирующие правила не сработали, итоговая риск-оценка осталась в безопасной зоне."
+      },
+      {
+        "id": "E-02",
+        "label": "normal",
+        "decision": "allow",
+        "tool_name": "web.fetch",
+        "scenario_type": "benign_large_transfer",
+        "payload_size": 4175,
+        "response_time_ms": 1930,
+        "risk_score": 0.10,
+        "rule_names": [],
+        "rationale": "Система классифицировала крупный, но допустимый сетевой обмен как безопасный сценарий."
+      },
+      {
+        "id": "E-03",
+        "label": "anomalous",
+        "decision": "warn",
+        "tool_name": "filesystem.search",
+        "scenario_type": "oversized_sensitive_query",
+        "payload_size": 13998,
+        "response_time_ms": 2544,
+        "risk_score": 0.50,
+        "rule_names": [],
+        "rationale": "Явных rule-based нарушений нет, но ML-риск превысил порог предупреждения."
+      },
+      {
+        "id": "E-04",
+        "label": "anomalous",
+        "decision": "warn",
+        "tool_name": "filesystem.search",
+        "scenario_type": "oversized_sensitive_query",
+        "payload_size": 12292,
+        "response_time_ms": 2668,
+        "risk_score": 0.50,
+        "rule_names": [],
+        "rationale": "Событие попало в пограничную зону и было оставлено на уровне предупреждения."
+      },
+      {
+        "id": "E-05",
+        "label": "malicious",
+        "decision": "block",
+        "tool_name": "web.fetch",
+        "scenario_type": "private_host_access",
+        "payload_size": 332,
+        "response_time_ms": 32,
+        "risk_score": 0.40,
+        "rule_names": ["private_address_access"],
+        "rationale": "Rule-based слой заблокировал запрос к приватному metadata-адресу."
+      },
+      {
+        "id": "E-06",
+        "label": "malicious",
+        "decision": "block",
+        "tool_name": "filesystem.read_file",
+        "scenario_type": "sensitive_file_access",
+        "payload_size": 358,
+        "response_time_ms": 67,
+        "risk_score": 0.70,
+        "rule_names": ["sensitive_path_access", "path_outside_safe_roots"],
+        "rationale": "Система заблокировала попытку чтения чувствительного файла за пределами безопасных корней."
+      }
+    ]
   },
   "gliner": {
     "source_corpus": {

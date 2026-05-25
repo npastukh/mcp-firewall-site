@@ -20,6 +20,7 @@ const EXAMPLES = [
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
+  initGlobalTooltip();
   const page = document.body.dataset.page;
   if (page === "demo") {
     initDemoPage();
@@ -30,7 +31,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initDemoPage() {
-  const healthButton = document.getElementById("api-health-button");
   const runButton = document.getElementById("run-analysis-button");
   const randomButton = document.getElementById("random-request-button");
   const promptInput = document.getElementById("prompt-input");
@@ -42,7 +42,6 @@ function initDemoPage() {
   }
   renderExamples();
 
-  healthButton.addEventListener("click", () => checkApiHealth());
   runButton.addEventListener("click", () =>
     runAnalysis({
       prompt: promptInput.value.trim(),
@@ -81,13 +80,15 @@ function applyRandomExample() {
 
 async function checkApiHealth() {
   const apiBase = getApiBase();
+  const signalCard = document.querySelector(".signal-card");
   const stateNode = document.getElementById("api-health-state");
   const noteNode = document.getElementById("api-health-note");
-  const button = document.getElementById("api-health-button");
+  const inlineNode = document.getElementById("api-health-inline");
 
-  setButtonLoading(button, true, "Проверяем...");
   stateNode.textContent = "проверка...";
+  if (inlineNode) inlineNode.textContent = "проверка...";
   noteNode.textContent = `Пытаемся подключиться к ${apiBase}`;
+  signalCard?.classList.remove("signal-ready", "signal-error");
 
   try {
     const response = await fetch(`${apiBase}/api/health`);
@@ -96,13 +97,15 @@ async function checkApiHealth() {
     }
     const data = await response.json();
     stateNode.textContent = "соединение установлено";
+    if (inlineNode) inlineNode.textContent = "соединение установлено";
     noteNode.textContent =
-      `CatBoost runtime: ${formatBool(data.catboost_runtime_ready)}. GLiNER checkpoint: ${formatBool(data.gliner_checkpoint_ready)}.`;
+      `CatBoost runtime: ${formatBool(data.catboost_runtime_ready)}. GLiNER checkpoint: ${formatBool(data.gliner_checkpoint_ready)}. Cache: ${data.analysis_cache_size}/${data.analysis_cache_capacity}.`;
+    signalCard?.classList.add("signal-ready");
   } catch (error) {
     stateNode.textContent = "соединение не установлено";
+    if (inlineNode) inlineNode.textContent = "соединение не установлено";
     noteNode.textContent = `Не удалось обратиться к API: ${error.message}`;
-  } finally {
-    setButtonLoading(button, false, "Проверить API");
+    signalCard?.classList.add("signal-error");
   }
 }
 
@@ -143,7 +146,7 @@ async function runAnalysis({ prompt, transportType }) {
 
     const data = await response.json();
     interpretationStatus.textContent = data.interpretation?.status || "готово";
-    responseStatus.textContent = "ответ получен";
+    responseStatus.textContent = data.cached ? "ответ из кэша" : "ответ получен";
 
     renderOverallResult(data);
     renderRulesStage(data.rules_catboost, data.source_prompt);
@@ -325,51 +328,41 @@ async function initDashboardPage() {
     const data = await fetchJsonOptional("../data/dashboard.json");
 
     renderCatboostOverview(eda.catboost?.dataset || {}, eda.catboost?.training?.split_protocol || {});
-    renderDonutChart("label-chart", eda.catboost?.dataset?.label_distribution || {}, "label", "2000 events");
-    renderDonutChart("catboost-decision-chart", eda.catboost?.dataset?.decision_distribution || {}, "decision", "firewall");
-    renderVerticalChart("scenario-chart", eda.catboost?.dataset?.scenario_distribution || {}, "scenario", { limit: 8 });
-    renderDecisionMatrix(data?.summary?.scenario_matrix || buildScenarioMatrixFallback(eda.catboost?.dataset?.scenario_distribution || {}));
+    renderDonutChart("label-chart", eda.catboost?.dataset?.label_distribution || {}, "label", "событий");
+    renderVerticalChart("scenario-chart", eda.catboost?.dataset?.scenario_distribution || {}, "scenario", {
+      limit: 8,
+      palette: ["#8e5b2c", "#b37a43", "#c59158", "#d1a66f", "#8b3d2c", "#365c5a", "#5a7d7b", "#9e6d38"],
+    });
     renderCatboostSplit(eda.catboost?.training?.split_protocol || {});
-    renderNumericProfile(eda.catboost?.dataset || {});
     renderTopToolsByLabel(eda.catboost?.dataset?.top_tools_by_label || {});
+    renderRuleLayer(eda.catboost?.rule_layer || {});
+    renderDecisionExamples(eda.catboost?.sample_events || []);
+    renderStageOneModelComparison(data?.evaluation?.model_metrics || []);
     renderCatboostParams(eda.catboost?.training?.best_params || {});
-    renderCatboostDeltaSummary(eda.catboost?.training?.models || []);
-    renderMetricComparison("catboost-comparison", (eda.catboost?.training?.models || []).slice(0, 2));
+    renderCatboostMetricCurves(eda.catboost?.training?.models || []);
     renderFeatureImportanceChart(eda.catboost?.training?.feature_importance || data?.evaluation?.feature_importance || []);
     renderConfusionMatrix(
       eda.catboost?.training?.confusion_matrix ? [eda.catboost.training.confusion_matrix] : data?.evaluation?.model_metrics || []
     );
-    renderModelTable(eda.catboost?.training?.models || [], "catboost-model-table");
+    renderStageOneScheme();
     renderGlinerOverview(eda.gliner || {});
-    renderDonutChart("gliner-balance-chart", eda.gliner?.source_corpus?.request_safety || {}, "request_safety", "source corpus");
-    renderVerticalChart("gliner-source-type-chart", eda.gliner?.source_corpus?.source_types || {}, "source_type");
-    renderVerticalChart("gliner-label-support-chart", eda.gliner?.source_corpus?.row_label_support || {}, "entity");
-    renderVerticalChart("gliner-template-chart", eda.gliner?.source_corpus?.template_families || {}, "template", { limit: 8 });
+    renderDonutChart("gliner-balance-chart", eda.gliner?.source_corpus?.request_safety || {}, "request_safety", "запросов");
+    renderVerticalChart("gliner-source-type-chart", eda.gliner?.source_corpus?.source_types || {}, "source_type", {
+      limit: 8,
+      palette: ["#365c5a", "#4c7875", "#5f8c89", "#78a4a1", "#8e5b2c", "#b37a43", "#c59158", "#d1a66f"],
+    });
+    renderVerticalChart("gliner-label-support-chart", eda.gliner?.source_corpus?.row_label_support || {}, "entity", {
+      limit: 6,
+      palette: ["#8b3d2c", "#a6573f", "#bf7354", "#d49073", "#365c5a", "#8e5b2c"],
+    });
+    renderVerticalChart("gliner-template-chart", eda.gliner?.source_corpus?.template_families || {}, "template", {
+      limit: 8,
+      palette: ["#8e5b2c", "#b37a43", "#d1a66f", "#365c5a", "#5f8c89", "#8b3d2c", "#bf7354", "#c59158"],
+    });
     renderSplitComparison(eda.gliner?.splits || {});
-    renderBeforeAfterComparison("gliner-request-comparison", [
-      { label: "Precision", before: eda.gliner?.evaluation?.before?.precision, after: eda.gliner?.evaluation?.after?.precision },
-      { label: "Recall", before: eda.gliner?.evaluation?.before?.recall, after: eda.gliner?.evaluation?.after?.recall },
-      { label: "F1", before: eda.gliner?.evaluation?.before?.f1, after: eda.gliner?.evaluation?.after?.f1 },
-      { label: "Accuracy", before: eda.gliner?.evaluation?.before?.accuracy, after: eda.gliner?.evaluation?.after?.accuracy },
-    ]);
-    renderBeforeAfterComparison("gliner-span-comparison", [
-      {
-        label: "Gated Precision",
-        before: eda.gliner?.evaluation?.before?.gated_precision,
-        after: eda.gliner?.evaluation?.after?.gated_precision,
-      },
-      {
-        label: "Gated Recall",
-        before: eda.gliner?.evaluation?.before?.gated_recall,
-        after: eda.gliner?.evaluation?.after?.gated_recall,
-      },
-      { label: "Gated F1", before: eda.gliner?.evaluation?.before?.gated_f1, after: eda.gliner?.evaluation?.after?.gated_f1 },
-    ]);
+    renderGlinerMetricCurves(eda.gliner?.evaluation || {});
     renderThresholdCurve(eda.gliner?.evaluation?.threshold_curve || []);
     renderGlinerLabelComparison(eda.gliner?.evaluation?.label_comparison || []);
-    renderCatboostMetricCurves(eda.catboost?.training?.models || []);
-    renderGlinerMetricCurves(eda.gliner?.evaluation || {});
-    renderSummaryMetricChanges(eda);
   } catch (error) {
     const target = document.getElementById("catboost-overview");
     if (target) {
@@ -407,22 +400,17 @@ function renderCatboostOverview(dataset, splitProtocol) {
     {
       label: "Всего событий",
       value: String(dataset.total_records || 0),
-      note: "Лабораторный датасет MCP-событий для обучения и оценки классического контура.",
+      note: "Лабораторный датасет MCP-событий для первого этапа защитного контура.",
     },
     {
       label: "Train / test",
       value: `${splitProtocol.train_rows || 0} / ${splitProtocol.test_rows || 0}`,
-      note: `${splitProtocol.type || "Stratified split"} с группировкой по session_id.`,
-    },
-    {
-      label: "Группы сессий",
-      value: `${splitProtocol.train_groups || 0} / ${splitProtocol.test_groups || 0}`,
-      note: "Такой split уменьшает утечку контекста между train и test.",
+      note: "Разделение выборки для обучения и итоговой тестовой оценки.",
     },
     {
       label: "Типов сценариев",
       value: String(scenarioCount),
-      note: "Безопасные, аномальные и вредоносные кейсы распределены по разным шаблонам поведения.",
+      note: "Безопасные, аномальные и вредоносные кейсы распределены по нескольким шаблонам поведения.",
     },
   ];
 
@@ -447,12 +435,12 @@ function renderCatboostSplit(splitProtocol) {
     {
       label: "Разбиение",
       value: splitProtocol.type || "StratifiedGroupKFold",
-      note: "Train и test формировались по session_id, а не случайно по строкам.",
+      note: "Train и test формировались с группировкой по session_id.",
     },
     {
-      label: "Целевая метрика",
+      label: "Ключевая метрика",
       value: splitProtocol.selection_metric || "PR-AUC OVR",
-      note: "Именно по этой метрике выбиралась итоговая конфигурация CatBoost.",
+      note: "Основная метрика сравнения моделей первого этапа.",
     },
     {
       label: "Тестовая часть",
@@ -558,7 +546,7 @@ function renderTopToolsByLabel(topToolsByLabel) {
                 ${rows
                   .map(
                     (row) => `
-                      <div class="bar-item" title="${escapeHtml(`${row.tool}: ${row.count}`)}">
+                      <div class="bar-item" ${tooltipAttr(`${row.tool}: ${row.count}`)}>
                         <div class="bar-meta">
                           <strong>${escapeHtml(row.tool)}</strong>
                           <span>${row.count}</span>
@@ -577,6 +565,128 @@ function renderTopToolsByLabel(topToolsByLabel) {
         .join("")}
     </div>
   `;
+}
+
+function renderRuleLayer(ruleLayer) {
+  const target = document.getElementById("catboost-rule-layer");
+  if (!target) return;
+
+  const rules = ruleLayer.core_rules || [];
+  target.innerHTML = `
+    <div class="rule-layer-summary">
+      <article class="rule-summary-card">
+        <span class="kpi-label">Всего правил</span>
+        <strong class="kpi-value">${Number(ruleLayer.total_rules || 0)}</strong>
+        <p class="kpi-note">Библиотека первого этапа объединяет блокирующие и предупреждающие rule-based проверки.</p>
+      </article>
+      <article class="rule-summary-card">
+        <span class="kpi-label">Сработали в датасете</span>
+        <strong class="kpi-value">${Number(ruleLayer.triggered_rules || rules.length)}</strong>
+        <p class="kpi-note">Ниже показаны основные правила, которые реально участвовали в синтетическом лабораторном корпусе.</p>
+      </article>
+    </div>
+    <div class="matrix-table-wrap">
+      <table class="metrics-table rules-table">
+        <thead>
+          <tr>
+            <th>Правило</th>
+            <th>Тип</th>
+            <th>Что фиксирует</th>
+            <th>Срабатываний</th>
+            <th>Пример</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rules
+            .map(
+              (rule) => `
+                <tr ${tooltipAttr(`${rule.name}\n${rule.detects}\nСрабатываний: ${rule.coverage}`)}>
+                  <td>${escapeHtml(rule.name)}</td>
+                  <td><span class="inline-badge inline-badge-${escapeHtml(rule.severity)}">${escapeHtml(rule.severity)}</span></td>
+                  <td>${escapeHtml(rule.detects)}</td>
+                  <td>${Number(rule.coverage || 0)}</td>
+                  <td>${escapeHtml(rule.example || "—")}</td>
+                </tr>
+              `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderDecisionExamples(rows) {
+  const target = document.getElementById("catboost-decision-examples");
+  if (!target || !rows.length) return;
+
+  target.innerHTML = `
+    <div class="decision-examples-layout">
+      <div class="matrix-table-wrap">
+        <table class="metrics-table decision-examples-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Класс</th>
+              <th>Решение</th>
+              <th>Инструмент</th>
+              <th>Сценарий</th>
+              <th>Риск</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map(
+                (row, index) => `
+                  <tr class="example-row ${index === 0 ? "is-active" : ""}" data-example-index="${index}">
+                    <td>${escapeHtml(row.id)}</td>
+                    <td>${escapeHtml(formatCategory(row.label, "label"))}</td>
+                    <td>${escapeHtml(formatDecision(row.decision))}</td>
+                    <td>${escapeHtml(row.tool_name)}</td>
+                    <td>${escapeHtml(formatScenario(row.scenario_type))}</td>
+                    <td>${Number(row.risk_score || 0).toFixed(2)}</td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+      <article class="example-detail-card" id="catboost-example-detail"></article>
+    </div>
+  `;
+
+  const detailTarget = document.getElementById("catboost-example-detail");
+  const rowNodes = target.querySelectorAll(".example-row");
+
+  const setActiveExample = (index) => {
+    const row = rows[index];
+    if (!row || !detailTarget) return;
+    rowNodes.forEach((node) => node.classList.toggle("is-active", Number(node.dataset.exampleIndex) === index));
+    detailTarget.innerHTML = `
+      <span class="signal-label">Событие ${escapeHtml(row.id)}</span>
+      <h4>${escapeHtml(row.tool_name)}</h4>
+      <div class="example-detail-meta">
+        <span class="stage-pill decision-${escapeHtml(row.label)}">${escapeHtml(formatCategory(row.label, "label"))}</span>
+        <span class="stage-pill decision-${escapeHtml(row.decision)}">${escapeHtml(formatDecision(row.decision))}</span>
+      </div>
+      <div class="detail-grid">
+        <div><strong>Сценарий</strong><span>${escapeHtml(formatScenario(row.scenario_type))}</span></div>
+        <div><strong>Размер запроса</strong><span>${Number(row.payload_size || 0)} bytes</span></div>
+        <div><strong>Время ответа</strong><span>${Number(row.response_time_ms || 0)} ms</span></div>
+        <div><strong>Оценка риска</strong><span>${Number(row.risk_score || 0).toFixed(2)}</span></div>
+        <div><strong>Правила</strong><span>${row.rule_names?.length ? escapeHtml(row.rule_names.join(", ")) : "—"}</span></div>
+      </div>
+      <p class="decision-rationale">${escapeHtml(row.rationale || "—")}</p>
+    `;
+  };
+
+  rowNodes.forEach((node) => {
+    node.addEventListener("mouseenter", () => setActiveExample(Number(node.dataset.exampleIndex)));
+    node.addEventListener("click", () => setActiveExample(Number(node.dataset.exampleIndex)));
+  });
+
+  setActiveExample(0);
 }
 
 function renderCatboostParams(params) {
@@ -604,6 +714,67 @@ function renderCatboostParams(params) {
           `
         )
         .join("")}
+    </div>
+  `;
+}
+
+function renderStageOneModelComparison(models) {
+  const target = document.getElementById("catboost-model-table");
+  if (!target) return;
+
+  const priorityOrder = [
+    "Rule-based baseline",
+    "Logistic Regression",
+    "SVM",
+    "Decision Tree",
+    "Random Forest",
+    "LightGBM",
+    "XGBoost",
+    "CatBoost",
+  ];
+
+  const sorted = models
+    .slice()
+    .sort((left, right) => priorityOrder.indexOf(left.model) - priorityOrder.indexOf(right.model));
+
+  target.innerHTML = sorted
+    .map((model) => {
+      const isBest = model.model === "CatBoost";
+      return `
+        <tr class="${isBest ? "metrics-row-best" : ""}" ${tooltipAttr(`${model.model}\nBalanced Accuracy: ${Number(model.balanced_accuracy || 0).toFixed(4)}\nMacro Precision: ${Number(model.macro_precision || 0).toFixed(4)}\nMacro Recall: ${Number(model.macro_recall || 0).toFixed(4)}\nPR-AUC OVR: ${Number(model.pr_auc_ovr || 0).toFixed(4)}\nROC-AUC OVR: ${Number(model.roc_auc_ovr || 0).toFixed(4)}`)}>
+          <td>${escapeHtml(model.model || "—")}</td>
+          <td>${Number(model.balanced_accuracy || 0).toFixed(4)}</td>
+          <td>${Number(model.macro_precision || 0).toFixed(4)}</td>
+          <td>${Number(model.macro_recall || 0).toFixed(4)}</td>
+          <td>${Number(model.pr_auc_ovr || 0).toFixed(4)}</td>
+          <td>${Number(model.roc_auc_ovr || 0).toFixed(4)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function renderStageOneScheme() {
+  const target = document.getElementById("stage1-scheme");
+  if (!target) return;
+
+  target.innerHTML = `
+    <div class="mini-pipeline-grid">
+      <article class="mini-pipeline-card">
+        <span class="pipeline-step">01</span>
+        <h4>Rule-based слой</h4>
+        <p>Покрывает явные нарушения: приватные адреса, чувствительные пути и несовместимые client-server сочетания.</p>
+      </article>
+      <article class="mini-pipeline-card">
+        <span class="pipeline-step">02</span>
+        <h4>CatBoost</h4>
+        <p>Оценивает риск по признакам события и устойчиво разделяет normal, anomalous и malicious сценарии.</p>
+      </article>
+      <article class="mini-pipeline-card">
+        <span class="pipeline-step">03</span>
+        <h4>Итог этапа</h4>
+        <p>В рабочем контуре первый этап используется как быстрый фильтр перед semantic-stage анализом.</p>
+      </article>
     </div>
   `;
 }
@@ -770,22 +941,22 @@ function renderGlinerOverview(gliner) {
   const threshold = gliner.evaluation?.after_validation?.threshold ?? 0.99;
   const cards = [
     {
-      label: "Строк в source corpus",
+      label: "Строк в исходном корпусе",
       value: String(source.rows || 0),
       note: "Исходный suspicious MCP-корпус до разбиения на train, validation и test.",
     },
     {
-      label: "Source types",
+      label: "Типов источников",
       value: String(Object.keys(source.source_types || {}).length),
       note: "В корпус включены natural language, shell, JSON, YAML, MCP request и code-like форматы.",
     },
     {
-      label: "Threshold для test",
+      label: "Порог для тестовой оценки",
       value: String(threshold),
       note: "Итоговая тестовая оценка GLiNER2 + LoRA в дипломе дана для threshold = 0.99.",
     },
     {
-      label: "Test gated F1",
+      label: "Gated F1 на тесте",
       value: `${Number(after.gated_f1 || 0).toFixed(4)}`,
       note: "Итоговая span-level метрика на тестовой части после LoRA-дообучения.",
     },
@@ -824,14 +995,14 @@ function renderSplitComparison(splits) {
             <span>${row.rows} строк</span>
           </div>
           <div class="comparison-bars">
-            <div class="comparison-bar-row" title="${escapeHtml(`${row.label} safe: ${row.safe}`)}">
+                  <div class="comparison-bar-row" ${tooltipAttr(`${row.label} safe: ${row.safe}`)}>
               <span>safe</span>
               <div class="bar-track">
                 <div class="bar-fill safe" style="width: ${(Number(row.safe || 0) / Number(row.rows || 1)) * 100}%"></div>
               </div>
               <strong>${row.safe}</strong>
             </div>
-            <div class="comparison-bar-row" title="${escapeHtml(`${row.label} suspicious: ${row.suspicious}`)}">
+                  <div class="comparison-bar-row" ${tooltipAttr(`${row.label} suspicious: ${row.suspicious}`)}>
               <span>suspicious</span>
               <div class="bar-track">
                 <div class="bar-fill danger" style="width: ${(Number(row.suspicious || 0) / Number(row.rows || 1)) * 100}%"></div>
@@ -849,8 +1020,15 @@ function renderThresholdCurve(rows) {
   const target = document.getElementById("gliner-threshold-chart");
   if (!target || !rows.length) return;
 
+  const best = rows.reduce((winner, row) => (Number(row.gated_f1 || 0) > Number(winner.gated_f1 || 0) ? row : winner), rows[0]);
+
   target.innerHTML = renderLineChartMarkup({
-    title: "request F1 / gated F1",
+    summary: `
+      <div class="threshold-highlight">
+        <strong>Лучший threshold: ${Number(best.threshold).toFixed(2)}</strong>
+        <span>Request F1: ${Number(best.request_f1 || 0).toFixed(4)} · Gated F1: ${Number(best.gated_f1 || 0).toFixed(4)}</span>
+      </div>
+    `,
     xFormatter: (value) => Number(value).toFixed(2),
     pointTitleFormatter: ({ x, seriesName, value }) => {
       const sourceRow = rows.find((row) => Number(row.threshold) === Number(x));
@@ -860,10 +1038,9 @@ function renderThresholdCurve(rows) {
       return [
         `${seriesName}`,
         `threshold: ${Number(sourceRow.threshold).toFixed(2)}`,
-        `value: ${Number(value).toFixed(4)}`,
+        `request F1: ${Number(sourceRow.request_f1 || 0).toFixed(4)}`,
+        `gated F1: ${Number(sourceRow.gated_f1 || 0).toFixed(4)}`,
         `accuracy: ${Number(sourceRow.accuracy || 0).toFixed(4)}`,
-        `gated precision: ${Number(sourceRow.gated_precision || 0).toFixed(4)}`,
-        `gated recall: ${Number(sourceRow.gated_recall || 0).toFixed(4)}`,
       ].join("\n");
     },
     rows: rows.map((row) => ({
@@ -880,39 +1057,35 @@ function renderGlinerLabelComparison(rows) {
   const target = document.getElementById("gliner-label-comparison");
   if (!target) return;
 
+  const sorted = rows.slice().sort((left, right) => Number(right.after_f1 || 0) - Number(left.after_f1 || 0));
   target.innerHTML = `
-    ${renderGroupedComparisonChartMarkup(rows, {
-      leftKey: "before_f1",
-      rightKey: "after_f1",
-      leftLabel: "До обучения",
-      rightLabel: "После LoRA",
-      type: "entity",
-    })}
-    <div class="matrix-table-wrap gliner-table-wrap">
-      <table class="metrics-table">
-        <thead>
-          <tr>
-            <th>Сущность</th>
-            <th>Precision</th>
-            <th>Recall</th>
-            <th>F1</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows
-            .map(
-              (row) => `
-                <tr>
-                  <td>${escapeHtml(formatCategory(row.label, "entity"))}</td>
-                  <td>${Number(row.after_precision || 0).toFixed(4)}</td>
-                  <td>${Number(row.after_recall || 0).toFixed(4)}</td>
-                  <td>${Number(row.after_f1 || 0).toFixed(4)}</td>
-                </tr>
-              `
-            )
-            .join("")}
-        </tbody>
-      </table>
+    <div class="entity-quality-grid">
+      ${sorted
+        .map((row) => {
+          const tooltip = [
+            formatCategory(row.label, "entity"),
+            `Precision: ${Number(row.after_precision || 0).toFixed(4)}`,
+            `Recall: ${Number(row.after_recall || 0).toFixed(4)}`,
+            `F1: ${Number(row.after_f1 || 0).toFixed(4)}`,
+          ].join("\n");
+          return `
+            <div class="entity-quality-row" ${tooltipAttr(tooltip)}>
+              <div class="entity-quality-head">
+                <strong>${escapeHtml(formatCategory(row.label, "entity"))}</strong>
+                <span>${Number(row.after_f1 || 0).toFixed(4)}</span>
+              </div>
+              <div class="bar-track entity-quality-track">
+                <div class="bar-fill teal" style="width:${Number(row.after_f1 || 0) * 100}%"></div>
+              </div>
+              <div class="entity-quality-meta">
+                <span>P ${Number(row.after_precision || 0).toFixed(4)}</span>
+                <span>R ${Number(row.after_recall || 0).toFixed(4)}</span>
+                <span>F1 ${Number(row.after_f1 || 0).toFixed(4)}</span>
+              </div>
+            </div>
+          `;
+        })
+        .join("")}
     </div>
   `;
 }
@@ -953,7 +1126,7 @@ function buildMetricPairChartMarkup(rows, beforeLabel, afterLabel) {
         ${rows
           .map(
             (row) => `
-              <div class="metric-pair-item" title="${escapeHtml(`${row.label} | ${beforeLabel}: ${Number(row.before || 0).toFixed(4)} | ${afterLabel}: ${Number(row.after || 0).toFixed(4)}`)}">
+              <div class="metric-pair-item" ${tooltipAttr(`${row.label} | ${beforeLabel}: ${Number(row.before || 0).toFixed(4)} | ${afterLabel}: ${Number(row.after || 0).toFixed(4)}`)}>
                 <div class="metric-pair-values">
                   <span class="metric-pair-top">${Number(row.after || 0).toFixed(4)}</span>
                 </div>
@@ -997,7 +1170,7 @@ function buildDeltaBarChartMarkup(rows) {
         ${deltas
           .map(
             (row) => `
-              <div class="metric-delta-item" title="${escapeHtml(`${row.label} | baseline: ${row.before.toFixed(4)} | tuned: ${row.after.toFixed(4)} | delta: ${row.delta >= 0 ? "+" : ""}${row.delta.toFixed(4)}`)}">
+              <div class="metric-delta-item" ${tooltipAttr(`${row.label} | baseline: ${row.before.toFixed(4)} | tuned: ${row.after.toFixed(4)} | delta: ${row.delta >= 0 ? "+" : ""}${row.delta.toFixed(4)}`)}>
                 <div class="metric-delta-value">${row.delta >= 0 ? "+" : ""}${row.delta.toFixed(4)}</div>
                 <div class="metric-delta-track">
                   <div class="metric-delta-fill teal" style="height:${(Math.abs(row.delta) / maxDelta) * 100}%"></div>
@@ -1169,7 +1342,8 @@ function renderDonutChart(targetId, values, type, centerLabel = "") {
           stroke="${chartColor(key, type)}"
           stroke-dasharray="${stroke} ${circumference - stroke}"
           stroke-dashoffset="${-offset}"
-        ><title>${escapeHtml(`${formatCategory(key, type)}: ${value} (${(share * 100).toFixed(1)}%)`)}</title></circle>
+          ${tooltipAttr(`${formatCategory(key, type)}: ${value} (${(share * 100).toFixed(1)}%)`)}
+        ></circle>
       `;
       offset += stroke;
       return segment;
@@ -1194,7 +1368,7 @@ function renderDonutChart(targetId, values, type, centerLabel = "") {
               <div class="legend-item">
                 <span class="legend-swatch" style="background:${chartColor(key, type)}"></span>
                 <strong>${escapeHtml(formatCategory(key, type))}</strong>
-                <span>${value} · ${share}%</span>
+                <span>${value} (${share}%)</span>
               </div>
             `;
           })
@@ -1216,18 +1390,20 @@ function renderVerticalChart(targetId, values, type, options = {}) {
     return;
   }
 
+  const palette = options.palette || [];
   const max = Math.max(...entries.map(([, value]) => Number(value)), 1);
   target.innerHTML = `
     <div class="chart-shell">
       <div class="vbar-chart">
         ${entries
-          .map(([key, value]) => {
+          .map(([key, value], index) => {
             const height = Math.max((Number(value) / max) * 100, 6);
+            const fillColor = palette[index] || chartColor(key, type);
             return `
-              <div class="vbar-item" title="${escapeHtml(`${formatCategory(key, type)}: ${value}`)}">
+              <div class="vbar-item" ${tooltipAttr(`${formatCategory(key, type)}: ${value}`)}>
                 <div class="vbar-value">${value}</div>
                 <div class="vbar-track">
-                  <div class="vbar-fill" style="height:${height}%; background:${chartColor(key, type)}"></div>
+                  <div class="vbar-fill" style="height:${height}%; background:${fillColor}"></div>
                 </div>
                 <div class="vbar-label">${escapeHtml(formatCategory(key, type))}</div>
               </div>
@@ -1268,7 +1444,7 @@ function renderVerticalChartFromPairs(targetId, pairs, options = {}) {
         ${pairs
           .map(
             ([label, value]) => `
-              <div class="vbar-item" title="${escapeHtml(`${label}: ${Number(value) < 1 ? Number(value).toFixed(4) : Math.round(Number(value))}`)}">
+              <div class="vbar-item" ${tooltipAttr(`${label}: ${Number(value) < 1 ? Number(value).toFixed(4) : Math.round(Number(value))}`)}>
                 <div class="vbar-value">${Number(value) < 1 ? Number(value).toFixed(4) : Math.round(Number(value))}</div>
                 <div class="vbar-track">
                   <div class="vbar-fill" style="height:${Math.max((Number(value) / max) * 100, 6)}%; background:${color}"></div>
@@ -1283,7 +1459,7 @@ function renderVerticalChartFromPairs(targetId, pairs, options = {}) {
   `;
 }
 
-function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter, yDomain = null }) {
+function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter, yDomain = null, summary = "" }) {
   if (!rows.length) {
     return '<div class="empty-state compact-empty">Данные недоступны.</div>';
   }
@@ -1329,9 +1505,7 @@ function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter, yDomain 
             : `${seriesName}\n${xFormatter(row.x)}: ${Number(row.series[seriesName]).toFixed(4)}`;
           return `
             <circle cx="${x}" cy="${y}" r="4.5" fill="${color}"></circle>
-            <circle cx="${x}" cy="${y}" r="12" fill="transparent" stroke="transparent" pointer-events="all" class="chart-hit-circle">
-              <title>${escapeHtml(title)}</title>
-            </circle>
+            <circle cx="${x}" cy="${y}" r="12" fill="transparent" stroke="transparent" pointer-events="all" class="chart-hit-circle" ${tooltipAttr(title)}></circle>
           `;
         })
         .join("");
@@ -1357,6 +1531,7 @@ function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter, yDomain 
 
   return `
     <div class="chart-shell">
+      ${summary}
       <svg viewBox="0 0 ${width} ${height}" class="line-chart" aria-hidden="true">
         <line x1="${padding.left}" y1="${padding.top + plotHeight}" x2="${width - padding.right}" y2="${padding.top + plotHeight}" class="line-axis"></line>
         <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + plotHeight}" class="line-axis"></line>
@@ -1397,7 +1572,7 @@ function renderGroupedComparisonChartMarkup(rows, options) {
         ${rows
           .map(
             (row) => `
-              <div class="grouped-bar-row" title="${escapeHtml(`${formatCategory(row.label, options.type)} | ${options.leftLabel}: ${Number(row[options.leftKey] || 0).toFixed(4)} | ${options.rightLabel}: ${Number(row[options.rightKey] || 0).toFixed(4)}`)}">
+              <div class="grouped-bar-row" ${tooltipAttr(`${formatCategory(row.label, options.type)} | ${options.leftLabel}: ${Number(row[options.leftKey] || 0).toFixed(4)} | ${options.rightLabel}: ${Number(row[options.rightKey] || 0).toFixed(4)}`)}>
                 <div class="grouped-bar-label">${escapeHtml(formatCategory(row.label, options.type))}</div>
                 <div class="grouped-bar-columns">
                   <div class="grouped-bar-track">
@@ -1788,7 +1963,7 @@ function formatCategory(value, type) {
     }[value] || value;
   }
   if (type === "source_type") {
-    return String(value).replaceAll("_", " ");
+    return String(value).replaceAll("mcp request", "MCP request").replaceAll("_", " ");
   }
   if (type === "template") {
     return String(value).replaceAll("_", " ");
@@ -1863,6 +2038,57 @@ function buildScenarioMatrixFallback(scenarioDistribution) {
 function formatDelta(before, after) {
   const delta = Number(after || 0) - Number(before || 0);
   return `${delta >= 0 ? "+" : ""}${delta.toFixed(4)}`;
+}
+
+let globalTooltipNode = null;
+let globalTooltipTarget = null;
+
+function initGlobalTooltip() {
+  if (globalTooltipNode) return;
+  globalTooltipNode = document.createElement("div");
+  globalTooltipNode.className = "ui-tooltip";
+  globalTooltipNode.hidden = true;
+  document.body.appendChild(globalTooltipNode);
+
+  document.addEventListener("mouseover", (event) => {
+    const target = event.target instanceof Element ? event.target.closest("[data-tooltip]") : null;
+    if (!target) return;
+    globalTooltipTarget = target;
+    globalTooltipNode.innerHTML = escapeHtml(target.getAttribute("data-tooltip") || "").replaceAll("\n", "<br>");
+    globalTooltipNode.hidden = false;
+  });
+
+  document.addEventListener("mousemove", (event) => {
+    if (!globalTooltipNode || globalTooltipNode.hidden) return;
+    positionTooltip(event.clientX, event.clientY);
+  });
+
+  document.addEventListener("mouseout", (event) => {
+    if (!globalTooltipTarget) return;
+    const nextTarget = event.relatedTarget instanceof Node ? event.relatedTarget : null;
+    if (nextTarget && globalTooltipTarget.contains(nextTarget)) return;
+    globalTooltipNode.hidden = true;
+    globalTooltipTarget = null;
+  });
+
+  document.addEventListener("scroll", () => {
+    if (globalTooltipNode) globalTooltipNode.hidden = true;
+  });
+}
+
+function positionTooltip(clientX, clientY) {
+  if (!globalTooltipNode) return;
+  const gap = 14;
+  const maxLeft = window.innerWidth - globalTooltipNode.offsetWidth - 12;
+  const maxTop = window.innerHeight - globalTooltipNode.offsetHeight - 12;
+  const left = Math.min(clientX + gap, maxLeft);
+  const top = Math.min(clientY + gap, maxTop);
+  globalTooltipNode.style.left = `${Math.max(12, left)}px`;
+  globalTooltipNode.style.top = `${Math.max(12, top)}px`;
+}
+
+function tooltipAttr(text) {
+  return `data-tooltip="${escapeHtml(text)}"`;
 }
 
 function formatParamValue(value) {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MCP Firewall — аналитический дашборд</title>
-    <link rel="stylesheet" href="../assets/styles.css?v=20260524-dashboard-4" />
+    <link rel="stylesheet" href="../assets/styles.css?v=20260525-dashboard-rework-1" />
   </head>
   <body data-page="dashboard">
     <div class="site-shell">
@@ -20,11 +20,9 @@
       <main class="page-stack">
         <section class="hero hero-dashboard">
           <div class="hero-copy">
-            <p class="eyebrow">Доказательная база</p>
+            <p class="eyebrow">Аналитический дашборд</p>
             <h1>Датасеты, обучение и итоговые метрики защитного контура</h1>
-            <p class="hero-text">
-              Здесь собраны данные по датасетам, обучению моделей и итоговым метрикам защитного контура.
-            </p>
+            <p class="hero-text">Данные по датасетам, обучению моделей и итоговым метрикам защитного контура.</p>
           </div>
         </section>
 
@@ -32,25 +30,19 @@
           <div class="section-head">
             <div>
               <p class="eyebrow">Этап 1</p>
-              <h2>Датасет и обучение CatBoost</h2>
+              <h2>Правила и ML-классификация</h2>
             </div>
-            <p class="section-note">
-              Сначала показаны данные для классического контура: состав выборки, распределения и изменение качества после настройки модели.
-            </p>
+            <p class="section-note">Первый этап объединяет rule-based проверки и ML-классификацию MCP-событий.</p>
           </div>
           <div class="stats-grid" id="catboost-overview"></div>
-          <div class="chart-grid">
-            <article class="chart-card">
+          <div class="chart-grid chart-grid-halves">
+            <article class="chart-card chart-card-wide">
               <h3>Классы событий</h3>
-              <div id="label-chart" class="bar-list"></div>
+              <div id="label-chart"></div>
             </article>
-            <article class="chart-card">
-              <h3>Решения firewall</h3>
-              <div id="catboost-decision-chart" class="bar-list"></div>
-            </article>
-            <article class="chart-card">
-              <h3>Сценарии</h3>
-              <div id="scenario-chart" class="bar-list"></div>
+            <article class="chart-card chart-card-wide">
+              <h3>Сценарии датасета</h3>
+              <div id="scenario-chart"></div>
             </article>
           </div>
           <div class="chart-grid chart-grid-lower chart-grid-halves">
@@ -59,18 +51,18 @@
               <div id="catboost-split-grid" class="scheme-grid"></div>
             </article>
             <article class="chart-card chart-card-wide">
-              <h3>Числовой профиль датасета</h3>
-              <div id="catboost-numeric-profile" class="comparison-list"></div>
+              <h3>Инструменты по классам</h3>
+              <div id="catboost-top-tools"></div>
             </article>
           </div>
           <div class="chart-grid chart-grid-lower chart-grid-halves">
             <article class="chart-card chart-card-wide">
-              <h3>Инструменты по классам</h3>
-              <div id="catboost-top-tools"></div>
+              <h3>Rule-based слой</h3>
+              <div id="catboost-rule-layer"></div>
             </article>
             <article class="chart-card chart-card-wide">
-              <h3>Матрица класс → решение</h3>
-              <div id="decision-matrix"></div>
+              <h3>Примеры решений системы</h3>
+              <div id="catboost-decision-examples"></div>
             </article>
           </div>
         </section>
@@ -79,50 +71,59 @@
           <div class="section-head">
             <div>
               <p class="eyebrow">CatBoost</p>
-              <h2>Как изменилось качество после настройки</h2>
+              <h2>Изменение метрик CatBoost после подбора гиперпараметров</h2>
             </div>
-            <p class="section-note">
-              Здесь видно, как менялось качество модели после настройки и почему этот контур был выбран как основной.
-            </p>
+            <p class="section-note">В этом разделе показано, как изменились метрики CatBoost после подбора гиперпараметров.</p>
           </div>
-          <div class="chart-grid">
-            <article class="chart-card">
+          <div class="chart-grid chart-grid-halves">
+            <article class="chart-card chart-card-wide">
+              <h3>Сравнение моделей первого этапа</h3>
+              <div class="matrix-table-wrap">
+                <table class="metrics-table">
+                  <thead>
+                    <tr>
+                      <th>Модель</th>
+                      <th>Balanced Accuracy</th>
+                      <th>Macro Precision</th>
+                      <th>Macro Recall</th>
+                      <th>PR-AUC OVR</th>
+                      <th>ROC-AUC OVR</th>
+                    </tr>
+                  </thead>
+                  <tbody id="catboost-model-table"></tbody>
+                </table>
+              </div>
+            </article>
+            <article class="chart-card chart-card-wide">
               <h3>Финальные гиперпараметры</h3>
               <div id="catboost-params"></div>
             </article>
-            <article class="chart-card">
-              <h3>Эффект подбора</h3>
-              <div id="catboost-delta-summary" class="comparison-list"></div>
+          </div>
+          <div class="chart-grid chart-grid-lower chart-grid-halves">
+            <article class="chart-card chart-card-wide">
+              <h3>CatBoost baseline vs tuned</h3>
+              <div id="catboost-baseline-curve"></div>
             </article>
             <article class="chart-card chart-card-wide">
-              <h3>Baseline vs tuned</h3>
-              <div id="catboost-comparison" class="comparison-list"></div>
+              <h3>Прирост tuned по метрикам</h3>
+              <div id="catboost-tuned-curve"></div>
             </article>
           </div>
-          <div class="chart-grid chart-grid-lower">
-            <article class="chart-card">
+          <div class="chart-grid chart-grid-lower chart-grid-halves">
+            <article class="chart-card chart-card-wide">
               <h3>Топ признаков</h3>
-              <div id="feature-chart" class="bar-list"></div>
+              <div id="feature-chart"></div>
             </article>
             <article class="chart-card chart-card-wide">
               <h3>Confusion matrix лидера</h3>
               <div id="confusion-matrix"></div>
             </article>
           </div>
-          <div class="table-card">
-            <table class="metrics-table">
-              <thead>
-                <tr>
-                  <th>Модель</th>
-                  <th>Balanced Accuracy</th>
-                  <th>Macro Precision</th>
-                  <th>Macro Recall</th>
-                  <th>PR-AUC OVR</th>
-                  <th>ROC-AUC OVR</th>
-                </tr>
-              </thead>
-              <tbody id="catboost-model-table"></tbody>
-            </table>
+          <div class="chart-grid chart-grid-lower">
+            <article class="chart-card chart-card-wide">
+              <h3>Итоговая схема этапа 1</h3>
+              <div id="stage1-scheme"></div>
+            </article>
           </div>
         </section>
 
@@ -132,24 +133,21 @@
               <p class="eyebrow">Этап 2</p>
               <h2>Датасет и дообучение GLiNER + LoRA</h2>
             </div>
-            <p class="section-note">
-              Для semantic-stage важен не только итоговый request verdict, но и качество span-детекции: что модель видела до обучения и что
-              начала распознавать после LoRA-адаптации.
-            </p>
+            <p class="section-note">Во втором этапе показаны данные для semantic-stage, результаты дообучения и итоговое качество распознавания сущностей.</p>
           </div>
           <div class="stats-grid" id="gliner-overview"></div>
           <div class="chart-grid">
             <article class="chart-card">
-              <h3>Safe / suspicious</h3>
-              <div id="gliner-balance-chart" class="bar-list"></div>
+              <h3>Баланс safe / suspicious</h3>
+              <div id="gliner-balance-chart"></div>
             </article>
             <article class="chart-card">
-              <h3>Source types</h3>
-              <div id="gliner-source-type-chart" class="bar-list"></div>
+              <h3>Источники данных</h3>
+              <div id="gliner-source-type-chart"></div>
             </article>
             <article class="chart-card">
-              <h3>Label support</h3>
-              <div id="gliner-label-support-chart" class="bar-list"></div>
+              <h3>Распределение сущностей</h3>
+              <div id="gliner-label-support-chart"></div>
             </article>
           </div>
           <div class="chart-grid chart-grid-lower chart-grid-halves">
@@ -158,8 +156,8 @@
               <div id="gliner-split-chart" class="comparison-list"></div>
             </article>
             <article class="chart-card chart-card-wide">
-              <h3>Template families</h3>
-              <div id="gliner-template-chart" class="bar-list"></div>
+              <h3>Шаблоны запросов</h3>
+              <div id="gliner-template-chart"></div>
             </article>
           </div>
         </section>
@@ -168,77 +166,37 @@
           <div class="section-head">
             <div>
               <p class="eyebrow">GLiNER</p>
-              <h2>Что изменилось после LoRA-дообучения</h2>
+              <h2>Качество после LoRA-дообучения</h2>
             </div>
-            <p class="section-note">
-              Здесь собраны сравнения до и после обучения: итоговый request verdict, качество span-детекции и изменение метрик по отдельным
-              сущностям.
-            </p>
+            <p class="section-note">Сравнение качества до и после LoRA-дообучения.</p>
           </div>
-          <div class="chart-grid">
-            <article class="chart-card">
+          <div class="chart-grid chart-grid-halves">
+            <article class="chart-card chart-card-wide">
               <h3>Request-level: до и после</h3>
-              <div id="gliner-request-comparison" class="comparison-list"></div>
+              <div id="gliner-request-curve"></div>
             </article>
-            <article class="chart-card">
+            <article class="chart-card chart-card-wide">
               <h3>Span-level: до и после</h3>
-              <div id="gliner-span-comparison" class="comparison-list"></div>
-            </article>
-            <article class="chart-card">
-              <h3>Threshold sweep</h3>
-              <div id="gliner-threshold-chart" class="comparison-list"></div>
+              <div id="gliner-span-curve"></div>
             </article>
           </div>
           <div class="chart-grid chart-grid-lower">
             <article class="chart-card chart-card-wide">
-              <h3>Gated span F1 по сущностям</h3>
+              <h3>Качество по ключевым сущностям</h3>
               <div id="gliner-label-comparison"></div>
             </article>
           </div>
-        </section>
-
-        <section class="panel panel-summary">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Сравнение</p>
-              <h2>Кривые и профили качества</h2>
-            </div>
-            <p class="section-note">
-              Здесь собраны именно графические сравнения: как менялись метрики `CatBoost` и как `GLiNER + LoRA` выглядел до и после
-              дообучения.
-            </p>
-          </div>
-          <div class="chart-grid chart-grid-halves">
-            <article class="chart-card">
-              <h3>CatBoost: baseline vs tuned</h3>
-              <div id="catboost-baseline-curve"></div>
-            </article>
-            <article class="chart-card">
-              <h3>CatBoost tuned: прирост по метрикам</h3>
-              <div id="catboost-tuned-curve"></div>
-            </article>
-          </div>
-          <div class="chart-grid chart-grid-lower chart-grid-halves">
-            <article class="chart-card">
-              <h3>GLiNER + LoRA: request-level до и после</h3>
-              <div id="gliner-request-curve"></div>
-            </article>
-            <article class="chart-card">
-              <h3>GLiNER + LoRA: span-level до и после</h3>
-              <div id="gliner-span-curve"></div>
-            </article>
-          </div>
-          <div class="chart-grid chart-grid-lower chart-grid-halves">
-            <article class="chart-card">
-              <h3>Ключевые изменения</h3>
-              <div id="summary-metrics" class="comparison-list"></div>
+          <div class="chart-grid chart-grid-lower">
+            <article class="chart-card chart-card-wide">
+              <h3>Threshold sweep</h3>
+              <div id="gliner-threshold-chart"></div>
             </article>
           </div>
         </section>
       </main>
     </div>
 
-    <script src="../assets/site-config.js?v=20260524-dashboard-4"></script>
-    <script src="../assets/app.js?v=20260524-dashboard-4"></script>
+    <script src="../assets/site-config.js?v=20260525-dashboard-rework-1"></script>
+    <script src="../assets/app.js?v=20260525-dashboard-rework-1"></script>
   </body>
 </html>
