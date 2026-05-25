@@ -332,6 +332,7 @@ async function initDashboardPage() {
     renderVerticalChart("scenario-chart", eda.catboost?.dataset?.scenario_distribution || {}, "scenario", {
       limit: 8,
       palette: ["#8e5b2c", "#b37a43", "#c59158", "#d1a66f", "#8b3d2c", "#365c5a", "#5a7d7b", "#9e6d38"],
+      labelFormatter: formatScenarioCompact,
     });
     renderCatboostSplit(eda.catboost?.training?.split_protocol || {});
     renderTopToolsByLabel(eda.catboost?.dataset?.top_tools_by_label || {});
@@ -363,6 +364,10 @@ async function initDashboardPage() {
     renderGlinerMetricCurves(eda.gliner?.evaluation || {});
     renderThresholdCurve(eda.gliner?.evaluation?.threshold_curve || []);
     renderGlinerLabelComparison(eda.gliner?.evaluation?.label_comparison || []);
+    renderArchitecture(data || {});
+    renderFinalFindings(eda, data || {});
+    renderFinalImplementation();
+    renderSummaryMetricChanges(eda);
   } catch (error) {
     const target = document.getElementById("catboost-overview");
     if (target) {
@@ -629,13 +634,13 @@ function renderDecisionExamples(rows) {
             ${rows
               .map(
                 (row, index) => `
-                  <tr class="example-row example-row-${escapeHtml(row.decision)} ${index === 0 ? "is-active" : ""}" data-example-index="${index}" ${tooltipAttr(`${formatDecision(row.decision)} | ${formatScenario(row.scenario_type)} | risk ${Number(row.risk_score || 0).toFixed(2)}`)}>
+                  <tr class="example-row example-row-${escapeHtml(row.decision)} ${index === 0 ? "is-active" : ""}" data-example-index="${index}" ${tooltipAttr(`${formatDecision(row.decision)} | ${formatScenario(row.scenario_type)} | ${formatExampleRiskLabel(row)}`)}>
                     <td>${escapeHtml(row.id)}</td>
                     <td><span class="inline-badge inline-badge-${escapeHtml(row.decision)}">${escapeHtml(formatDecision(row.decision))}</span></td>
                     <td>${escapeHtml(row.tool_name)}</td>
                     <td>${escapeHtml(formatScenario(row.scenario_type))}</td>
                     <td>${escapeHtml(formatCategory(row.label, "label"))}</td>
-                    <td>${Number(row.risk_score || 0).toFixed(2)}</td>
+                    <td>${escapeHtml(formatExampleRiskValue(row))}</td>
                   </tr>
                 `
               )
@@ -666,7 +671,7 @@ function renderDecisionExamples(rows) {
         <div><strong>Сценарий</strong><span>${escapeHtml(formatScenario(row.scenario_type))}</span></div>
         <div><strong>Размер запроса</strong><span>${Number(row.payload_size || 0)} bytes</span></div>
         <div><strong>Время ответа</strong><span>${Number(row.response_time_ms || 0)} ms</span></div>
-        <div><strong>Оценка риска</strong><span>${Number(row.risk_score || 0).toFixed(2)}</span></div>
+        <div><strong>Оценка риска</strong><span>${escapeHtml(formatExampleRiskValue(row))}</span></div>
         <div><strong>Правила</strong><span>${row.rule_names?.length ? escapeHtml(row.rule_names.join(", ")) : "—"}</span></div>
       </div>
       <p class="decision-rationale">${escapeHtml(row.rationale || "—")}</p>
@@ -1013,6 +1018,14 @@ function renderThresholdCurve(rows) {
   if (!target || !rows.length) return;
 
   const best = rows.reduce((winner, row) => (Number(row.gated_f1 || 0) > Number(winner.gated_f1 || 0) ? row : winner), rows[0]);
+  const chartRows = rows.map((row, index) => ({
+    x: index + 1,
+    threshold: Number(row.threshold),
+    series: {
+      "Request F1": Number(row.request_f1 || 0),
+      "Gated F1": Number(row.gated_f1 || 0),
+    },
+  }));
 
   target.innerHTML = renderLineChartMarkup({
     summary: `
@@ -1021,27 +1034,24 @@ function renderThresholdCurve(rows) {
         <span>Request F1: ${Number(best.request_f1 || 0).toFixed(4)} · Gated F1: ${Number(best.gated_f1 || 0).toFixed(4)}</span>
       </div>
     `,
-    xFormatter: (value) => Number(value).toFixed(2),
+    xFormatter: (value) => {
+      const sourceRow = chartRows[Math.max(0, Math.min(chartRows.length - 1, Math.round(Number(value)) - 1))];
+      return sourceRow ? sourceRow.threshold.toFixed(2) : String(value);
+    },
     pointTitleFormatter: ({ x, seriesName, value }) => {
-      const sourceRow = rows.find((row) => Number(row.threshold) === Number(x));
+      const sourceRow = chartRows[Math.max(0, Math.min(chartRows.length - 1, Math.round(Number(x)) - 1))];
       if (!sourceRow) {
-        return `${seriesName}\nthreshold ${Number(x).toFixed(2)}\nvalue ${Number(value).toFixed(4)}`;
+        return `${seriesName}\nvalue ${Number(value).toFixed(4)}`;
       }
       return [
         `${seriesName}`,
         `threshold: ${Number(sourceRow.threshold).toFixed(2)}`,
-        `request F1: ${Number(sourceRow.request_f1 || 0).toFixed(4)}`,
-        `gated F1: ${Number(sourceRow.gated_f1 || 0).toFixed(4)}`,
-        `accuracy: ${Number(sourceRow.accuracy || 0).toFixed(4)}`,
+        `request F1: ${Number(sourceRow.series["Request F1"] || 0).toFixed(4)}`,
+        `gated F1: ${Number(sourceRow.series["Gated F1"] || 0).toFixed(4)}`,
       ].join("\n");
     },
-    rows: rows.map((row) => ({
-      x: Number(row.threshold),
-      series: {
-        "Request F1": Number(row.request_f1 || 0),
-        "Gated F1": Number(row.gated_f1 || 0),
-      },
-    })),
+    pointLabelOffsetFormatter: ({ seriesIndex }) => (seriesIndex === 0 ? -12 : 18),
+    rows: chartRows,
   });
 }
 
@@ -1187,6 +1197,7 @@ function buildCatboostDeltaOverview(rows) {
             min: 0,
             max: maxDelta + 0.003,
           },
+          showSummary: false,
           showLegend: false,
         })}
       </div>
@@ -1273,6 +1284,7 @@ function renderMultiStageMetricCurve(metricKeys, seriesRows) {
       const metric = metricKeys[Math.max(0, Math.min(metricKeys.length - 1, Math.round(x) - 1))];
       return `${seriesName}\n${metric.short}: ${Number(value).toFixed(4)}`;
     },
+    pointLabelOffsetFormatter: ({ seriesIndex }) => (seriesIndex === 0 ? -12 : 18),
   });
 }
 
@@ -1325,6 +1337,82 @@ function renderSummaryMetricChanges(eda) {
     .join("");
 }
 
+function renderFinalFindings(eda, data) {
+  const target = document.getElementById("final-findings");
+  if (!target) return;
+
+  const bestModel = data?.evaluation?.model_metrics?.find((row) => row.model === "CatBoost");
+  const after = eda?.gliner?.evaluation?.after || {};
+  const bestThreshold =
+    eda?.gliner?.evaluation?.threshold_curve?.reduce(
+      (winner, row) => (Number(row.gated_f1 || 0) > Number(winner?.gated_f1 || 0) ? row : winner),
+      eda?.gliner?.evaluation?.threshold_curve?.[0] || null
+    ) || null;
+
+  const cards = [
+    {
+      title: "Rule-based слой",
+      text: "Явные нарушения фиксируются правилами до подключения более тяжёлого semantic-stage.",
+    },
+    {
+      title: "Лидер первого этапа",
+      text: `CatBoost показал лучший результат среди моделей первого этапа, включая PR-AUC OVR ${Number(bestModel?.pr_auc_ovr || 0).toFixed(4)}.`,
+    },
+    {
+      title: "Эффект LoRA",
+      text: `После дообучения GLiNER улучшил request-level F1 до ${Number(after.f1 || 0).toFixed(4)} и gated F1 до ${Number(after.gated_f1 || 0).toFixed(4)}.`,
+    },
+    {
+      title: "Выбранный порог",
+      text: bestThreshold
+        ? `На валидационной части лучший баланс показал threshold ${Number(bestThreshold.threshold).toFixed(2)}.`
+        : "Порог semantic-stage подбирался по валидационной части датасета.",
+    },
+  ];
+
+  target.innerHTML = cards
+    .map(
+      (card) => `
+        <article class="signal-card signal-ready">
+          <strong>${escapeHtml(card.title)}</strong>
+          <p>${escapeHtml(card.text)}</p>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderFinalImplementation() {
+  const target = document.getElementById("final-implementation");
+  if (!target) return;
+
+  const items = [
+    {
+      title: "Этап 1: Rules + CatBoost",
+      text: "Rule-based проверки и табличная ML-классификация событий используются как основной рабочий контур.",
+    },
+    {
+      title: "Этап 2: GLiNER + LoRA",
+      text: "Semantic-stage подключается только к подозрительным случаям и уточняет итоговое решение по тексту запроса.",
+    },
+    {
+      title: "Демонстрационный стенд",
+      text: "GitHub Pages дашборд и serverless API в Yandex Cloud собирают итоговую рабочую демонстрацию проекта.",
+    },
+  ];
+
+  target.innerHTML = items
+    .map(
+      (item) => `
+        <article class="stage-card">
+          <h3>${escapeHtml(item.title)}</h3>
+          <p>${escapeHtml(item.text)}</p>
+        </article>
+      `
+    )
+    .join("");
+}
+
 function renderDonutChart(targetId, values, type, centerLabel = "") {
   const target = document.getElementById(targetId);
   if (!target) return;
@@ -1361,13 +1449,15 @@ function renderDonutChart(targetId, values, type, centerLabel = "") {
 
   target.innerHTML = `
     <div class="chart-shell chart-shell-donut">
-      <svg viewBox="0 0 120 120" class="donut-chart" aria-hidden="true">
-        <circle class="donut-ring-bg" cx="60" cy="60" r="44"></circle>
-        ${segments}
-      </svg>
-      <div class="donut-center">
-        <strong>${total}</strong>
-        <span>${escapeHtml(centerLabel)}</span>
+      <div class="donut-visual">
+        <svg viewBox="0 0 120 120" class="donut-chart" aria-hidden="true">
+          <circle class="donut-ring-bg" cx="60" cy="60" r="44"></circle>
+          ${segments}
+        </svg>
+        <div class="donut-center">
+          <strong>${total}</strong>
+          <span>${escapeHtml(centerLabel)}</span>
+        </div>
       </div>
       <div class="chart-legend">
         ${entries
@@ -1408,13 +1498,14 @@ function renderVerticalChart(targetId, values, type, options = {}) {
           .map(([key, value], index) => {
             const height = Math.max((Number(value) / max) * 100, 6);
             const fillColor = palette[index] || chartColor(key, type);
+            const label = options.labelFormatter ? options.labelFormatter(key) : formatCategory(key, type);
             return `
               <div class="vbar-item" ${tooltipAttr(`${formatCategory(key, type)}: ${value}`)}>
                 <div class="vbar-value">${value}</div>
                 <div class="vbar-track">
                   <div class="vbar-fill" style="height:${height}%; background:${fillColor}"></div>
                 </div>
-                <div class="vbar-label">${escapeHtml(formatCategory(key, type))}</div>
+                <div class="vbar-label">${escapeHtml(label)}</div>
               </div>
             `;
           })
@@ -1550,6 +1641,7 @@ function renderLineChartMarkup({
   xFormatter,
   pointTitleFormatter,
   pointLabelFormatter = null,
+  pointLabelOffsetFormatter = null,
   yDomain = null,
   summary = "",
   compact = false,
@@ -1602,10 +1694,18 @@ function renderLineChartMarkup({
           const pointLabel = pointLabelFormatter
             ? pointLabelFormatter({ x: row.x, seriesName, value: Number(row.series[seriesName]) })
             : Number(row.series[seriesName]).toFixed(4);
+          const pointLabelOffset = pointLabelOffsetFormatter
+            ? pointLabelOffsetFormatter({
+                x: row.x,
+                seriesName,
+                value: Number(row.series[seriesName]),
+                seriesIndex: index,
+              })
+            : -10;
           return `
             <circle cx="${x}" cy="${y}" r="${compact ? 4 : 4.5}" fill="${color}"></circle>
             <circle cx="${x}" cy="${y}" r="${compact ? 11 : 12}" fill="transparent" stroke="transparent" pointer-events="all" class="chart-hit-circle" ${tooltipAttr(title)}></circle>
-            <text x="${x}" y="${y - 10}" text-anchor="middle" class="line-point-value">${escapeHtml(pointLabel)}</text>
+            <text x="${x}" y="${y + pointLabelOffset}" text-anchor="middle" class="line-point-value">${escapeHtml(pointLabel)}</text>
           `;
         })
         .join("");
@@ -2105,6 +2205,23 @@ function formatScenario(value) {
     .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
+function formatScenarioCompact(value) {
+  const map = {
+    benign_large_transfer: "Large transfer",
+    benign_error_recovery: "Error recovery",
+    benign_usage: "Benign usage",
+    sensitive_file_access: "Sensitive file",
+    public_endpoint_exfiltration: "Public endpoint",
+    covert_safe_root_access: "Safe-root access",
+    private_host_access: "Private host",
+    noisy_borderline_search: "Borderline search",
+    oversized_sensitive_query: "Oversized query",
+    high_latency_search: "High-latency search",
+    error_burst_like: "Error burst",
+  };
+  return map[value] || formatScenario(value);
+}
+
 function inferDecisionFromScenario(scenario, label) {
   if (label === "malicious") return "block";
   if (label === "anomalous") return "warn";
@@ -2136,6 +2253,20 @@ function buildScenarioMatrixFallback(scenarioDistribution) {
 function formatDelta(before, after) {
   const delta = Number(after || 0) - Number(before || 0);
   return `${delta >= 0 ? "+" : ""}${delta.toFixed(4)}`;
+}
+
+function formatExampleRiskValue(row) {
+  if (row?.decision === "block" && Array.isArray(row.rule_names) && row.rule_names.length > 0) {
+    return "по правилу";
+  }
+  return Number(row?.risk_score || 0).toFixed(2);
+}
+
+function formatExampleRiskLabel(row) {
+  if (row?.decision === "block" && Array.isArray(row.rule_names) && row.rule_names.length > 0) {
+    return "block by rule";
+  }
+  return `risk ${Number(row?.risk_score || 0).toFixed(2)}`;
 }
 
 let globalTooltipNode = null;

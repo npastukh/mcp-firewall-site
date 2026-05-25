@@ -349,7 +349,11 @@ body::before {
 }
 
 .stage1-top-grid {
-  grid-template-columns: minmax(320px, 0.86fr) minmax(520px, 1.14fr);
+  grid-template-columns: minmax(280px, 0.72fr) minmax(620px, 1.28fr);
+}
+
+.stage1-tools-grid {
+  grid-template-columns: minmax(320px, 0.82fr) minmax(540px, 1.18fr);
 }
 
 .chart-grid-halves .chart-card-wide {
@@ -623,6 +627,13 @@ body::before {
   align-items: center;
 }
 
+.donut-visual {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  margin: 0 auto;
+}
+
 .donut-chart {
   width: 180px;
   height: 180px;
@@ -643,8 +654,10 @@ body::before {
 }
 
 .donut-center {
-  margin-top: -124px;
+  position: absolute;
+  inset: 0;
   display: grid;
+  align-content: center;
   justify-items: center;
   text-align: center;
   pointer-events: none;
@@ -735,20 +748,22 @@ body::before {
 }
 
 #scenario-chart .vbar-chart {
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 10px;
 }
 
 #scenario-chart .vbar-item {
-  grid-template-rows: auto 170px minmax(5.6em, auto);
+  grid-template-rows: auto 170px minmax(3.2em, auto);
 }
 
 #scenario-chart .vbar-label {
-  min-height: 5.6em;
+  min-height: 3.2em;
+  font-size: 0.8rem;
+  line-height: 1.2;
 }
 
 #label-chart .chart-legend {
-  gap: 14px;
+  gap: 12px;
 }
 
 #label-chart .chart-shell-donut {
@@ -756,13 +771,14 @@ body::before {
   align-items: start;
 }
 
-#label-chart .donut-chart {
+#label-chart .donut-visual {
   width: 150px;
   height: 150px;
 }
 
-#label-chart .donut-center {
-  margin-top: -108px;
+#label-chart .donut-chart {
+  width: 150px;
+  height: 150px;
 }
 
 #label-chart .legend-item {
@@ -788,8 +804,8 @@ body::before {
 }
 
 #scenario-chart .vbar-chart {
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 10px;
   min-height: 210px;
 }
 
@@ -798,11 +814,13 @@ body::before {
 }
 
 #scenario-chart .vbar-item {
-  grid-template-rows: auto 170px minmax(5.8em, auto);
+  grid-template-rows: auto 170px minmax(3.2em, auto);
 }
 
 #scenario-chart .vbar-label {
-  min-height: 5.8em;
+  min-height: 3.2em;
+  font-size: 0.8rem;
+  line-height: 1.2;
 }
 
 .vbar-value {
@@ -1015,14 +1033,27 @@ body::before {
 }
 
 .tool-column-card .bar-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
+  column-gap: 10px;
 }
 
 .tool-column-card .bar-meta strong,
 .tool-column-card .bar-meta span {
   min-width: 0;
+}
+
+.tool-column-card .bar-meta strong {
   overflow-wrap: anywhere;
   word-break: break-word;
+  line-height: 1.15;
+}
+
+.tool-column-card .bar-meta span {
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .param-grid {
@@ -1359,11 +1390,21 @@ body::before {
 .inline-badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 6px 10px;
+  min-width: 64px;
   border-radius: 999px;
   border: 1px solid var(--line);
   font-size: 0.82rem;
+  line-height: 1;
+  white-space: nowrap;
   background: rgba(255, 250, 244, 0.9);
+}
+
+.rules-table td:nth-child(2),
+.rules-table th:nth-child(2) {
+  width: 92px;
+  text-align: center;
 }
 
 .inline-badge-block {
@@ -1737,7 +1778,8 @@ a {
   }
 
   .donut-center {
-    margin-top: -118px;
+    position: absolute;
+    inset: 0;
   }
 
   .nav-links {

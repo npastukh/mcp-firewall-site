@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MCP Firewall — аналитический дашборд</title>
-    <link rel="stylesheet" href="../assets/styles.css?v=20260525-dashboard-rework-11" />
+    <link rel="stylesheet" href="../assets/styles.css?v=20260525-dashboard-rework-14" />
   </head>
   <body data-page="dashboard">
     <div class="site-shell">
@@ -45,7 +45,7 @@
               <div id="scenario-chart"></div>
             </article>
           </div>
-          <div class="chart-grid chart-grid-lower chart-grid-halves">
+          <div class="chart-grid chart-grid-lower chart-grid-halves stage1-tools-grid">
             <article class="chart-card chart-card-wide">
               <h3>Схема train/test split</h3>
               <div id="catboost-split-grid" class="scheme-grid"></div>
@@ -201,10 +201,40 @@
             </article>
           </div>
         </section>
+
+        <section class="panel panel-summary">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Итог</p>
+              <h2>Итоговая схема и результаты работы</h2>
+            </div>
+            <p class="section-note">Финальный блок собирает общую картину: как устроен контур, какие выводы дало исследование и что вошло в демонстрационный стенд.</p>
+          </div>
+          <div class="chart-grid chart-grid-single">
+            <article class="chart-card chart-card-wide">
+              <h3>Итоговая схема защитного контура</h3>
+              <div id="architecture-grid" class="pipeline-grid dashboard-pipeline"></div>
+            </article>
+          </div>
+          <div class="chart-grid chart-grid-lower focus-grid">
+            <article class="focus-card">
+              <h3>Ключевые выводы</h3>
+              <div id="final-findings" class="compact-panel"></div>
+            </article>
+            <article class="focus-card">
+              <h3>Финальная реализация</h3>
+              <div id="final-implementation" class="compact-panel"></div>
+            </article>
+            <article class="focus-card">
+              <h3>Опорные метрики</h3>
+              <div id="summary-metrics" class="compact-panel"></div>
+            </article>
+          </div>
+        </section>
       </main>
     </div>
 
-    <script src="../assets/site-config.js?v=20260525-dashboard-rework-11"></script>
-    <script src="../assets/app.js?v=20260525-dashboard-rework-11"></script>
+    <script src="../assets/site-config.js?v=20260525-dashboard-rework-14"></script>
+    <script src="../assets/app.js?v=20260525-dashboard-rework-14"></script>
   </body>
 </html>
