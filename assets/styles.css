@@ -793,13 +793,14 @@ body::before {
 #label-chart .chart-shell-donut,
 #gliner-balance-chart .chart-shell-donut {
   grid-template-columns: 240px minmax(0, 1fr);
-  align-items: start;
+  align-items: center;
 }
 
 #label-chart .donut-visual,
 #gliner-balance-chart .donut-visual {
   width: 240px;
   height: 240px;
+  justify-self: center;
 }
 
 #label-chart .donut-chart,
@@ -830,9 +831,29 @@ body::before {
 }
 
 #label-chart .legend-item {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: 16px minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+#label-chart .legend-item span:last-child,
+#gliner-balance-chart .legend-item span:last-child {
+  justify-self: end;
+  text-align: right;
+  white-space: nowrap;
+}
+
+#label-chart .legend-item strong,
+#gliner-balance-chart .legend-item strong {
+  min-width: 0;
+}
+
+#gliner-balance-chart .legend-item {
+  display: grid;
+  grid-template-columns: 16px minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
 }
 
 #gliner-balance-chart .chart-legend {
