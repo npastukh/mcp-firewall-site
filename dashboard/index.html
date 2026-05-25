@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MCP Firewall — аналитический дашборд</title>
-    <link rel="stylesheet" href="../assets/styles.css?v=20260525-dashboard-rework-1" />
+    <link rel="stylesheet" href="../assets/styles.css?v=20260525-dashboard-rework-3" />
   </head>
   <body data-page="dashboard">
     <div class="site-shell">
@@ -55,11 +55,13 @@
               <div id="catboost-top-tools"></div>
             </article>
           </div>
-          <div class="chart-grid chart-grid-lower chart-grid-halves">
+          <div class="chart-grid chart-grid-lower">
             <article class="chart-card chart-card-wide">
               <h3>Rule-based слой</h3>
               <div id="catboost-rule-layer"></div>
             </article>
+          </div>
+          <div class="chart-grid chart-grid-lower">
             <article class="chart-card chart-card-wide">
               <h3>Примеры решений системы</h3>
               <div id="catboost-decision-examples"></div>
@@ -70,10 +72,10 @@
         <section class="panel panel-catboost">
           <div class="section-head">
             <div>
-              <p class="eyebrow">CatBoost</p>
-              <h2>Изменение метрик CatBoost после подбора гиперпараметров</h2>
+              <p class="eyebrow">Этап 1</p>
+              <h2>Сравнение моделей и настройка CatBoost первого этапа</h2>
             </div>
-            <p class="section-note">В этом разделе показано, как изменились метрики CatBoost после подбора гиперпараметров.</p>
+            <p class="section-note">В этом разделе собраны результаты сравнения моделей первого этапа и итоговая настройка CatBoost.</p>
           </div>
           <div class="chart-grid chart-grid-halves">
             <article class="chart-card chart-card-wide">
@@ -101,11 +103,11 @@
           </div>
           <div class="chart-grid chart-grid-lower chart-grid-halves">
             <article class="chart-card chart-card-wide">
-              <h3>CatBoost baseline vs tuned</h3>
+              <h3>Изменение основных метрик CatBoost</h3>
               <div id="catboost-baseline-curve"></div>
             </article>
             <article class="chart-card chart-card-wide">
-              <h3>Прирост tuned по метрикам</h3>
+              <h3>Прирост tuned относительно baseline</h3>
               <div id="catboost-tuned-curve"></div>
             </article>
           </div>
@@ -136,25 +138,27 @@
             <p class="section-note">Во втором этапе показаны данные для semantic-stage, результаты дообучения и итоговое качество распознавания сущностей.</p>
           </div>
           <div class="stats-grid" id="gliner-overview"></div>
-          <div class="chart-grid">
-            <article class="chart-card">
+          <div class="chart-grid chart-grid-halves">
+            <article class="chart-card chart-card-wide">
               <h3>Баланс safe / suspicious</h3>
               <div id="gliner-balance-chart"></div>
             </article>
-            <article class="chart-card">
-              <h3>Источники данных</h3>
-              <div id="gliner-source-type-chart"></div>
-            </article>
-            <article class="chart-card">
-              <h3>Распределение сущностей</h3>
-              <div id="gliner-label-support-chart"></div>
-            </article>
-          </div>
-          <div class="chart-grid chart-grid-lower chart-grid-halves">
             <article class="chart-card chart-card-wide">
               <h3>Train / validation / test</h3>
               <div id="gliner-split-chart" class="comparison-list"></div>
             </article>
+          </div>
+          <div class="chart-grid chart-grid-lower chart-grid-halves">
+            <article class="chart-card chart-card-wide">
+              <h3>Источники данных</h3>
+              <div id="gliner-source-type-chart"></div>
+            </article>
+            <article class="chart-card chart-card-wide">
+              <h3>Распределение сущностей</h3>
+              <div id="gliner-label-support-chart"></div>
+            </article>
+          </div>
+          <div class="chart-grid chart-grid-lower">
             <article class="chart-card chart-card-wide">
               <h3>Шаблоны запросов</h3>
               <div id="gliner-template-chart"></div>
@@ -168,7 +172,13 @@
               <p class="eyebrow">GLiNER</p>
               <h2>Качество после LoRA-дообучения</h2>
             </div>
-            <p class="section-note">Сравнение качества до и после LoRA-дообучения.</p>
+            <p class="section-note">Сначала показан подбор порога, затем итоговое качество модели после LoRA-дообучения.</p>
+          </div>
+          <div class="chart-grid">
+            <article class="chart-card chart-card-wide">
+              <h3>Threshold sweep</h3>
+              <div id="gliner-threshold-chart"></div>
+            </article>
           </div>
           <div class="chart-grid chart-grid-halves">
             <article class="chart-card chart-card-wide">
@@ -186,17 +196,11 @@
               <div id="gliner-label-comparison"></div>
             </article>
           </div>
-          <div class="chart-grid chart-grid-lower">
-            <article class="chart-card chart-card-wide">
-              <h3>Threshold sweep</h3>
-              <div id="gliner-threshold-chart"></div>
-            </article>
-          </div>
         </section>
       </main>
     </div>
 
-    <script src="../assets/site-config.js?v=20260525-dashboard-rework-1"></script>
-    <script src="../assets/app.js?v=20260525-dashboard-rework-1"></script>
+    <script src="../assets/site-config.js?v=20260525-dashboard-rework-3"></script>
+    <script src="../assets/app.js?v=20260525-dashboard-rework-3"></script>
   </body>
 </html>

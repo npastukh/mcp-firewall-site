@@ -347,11 +347,11 @@ async function initDashboardPage() {
     renderStageOneScheme();
     renderGlinerOverview(eda.gliner || {});
     renderDonutChart("gliner-balance-chart", eda.gliner?.source_corpus?.request_safety || {}, "request_safety", "запросов");
-    renderVerticalChart("gliner-source-type-chart", eda.gliner?.source_corpus?.source_types || {}, "source_type", {
+    renderHorizontalRankChart("gliner-source-type-chart", eda.gliner?.source_corpus?.source_types || {}, "source_type", {
       limit: 8,
       palette: ["#365c5a", "#4c7875", "#5f8c89", "#78a4a1", "#8e5b2c", "#b37a43", "#c59158", "#d1a66f"],
     });
-    renderVerticalChart("gliner-label-support-chart", eda.gliner?.source_corpus?.row_label_support || {}, "entity", {
+    renderLollipopChart("gliner-label-support-chart", eda.gliner?.source_corpus?.row_label_support || {}, "entity", {
       limit: 6,
       palette: ["#8b3d2c", "#a6573f", "#bf7354", "#d49073", "#365c5a", "#8e5b2c"],
     });
@@ -436,11 +436,6 @@ function renderCatboostSplit(splitProtocol) {
       label: "Разбиение",
       value: splitProtocol.type || "StratifiedGroupKFold",
       note: "Train и test формировались с группировкой по session_id.",
-    },
-    {
-      label: "Ключевая метрика",
-      value: splitProtocol.selection_metric || "PR-AUC OVR",
-      note: "Основная метрика сравнения моделей первого этапа.",
     },
     {
       label: "Тестовая часть",
@@ -627,10 +622,10 @@ function renderDecisionExamples(rows) {
           <thead>
             <tr>
               <th>ID</th>
-              <th>Класс</th>
               <th>Решение</th>
               <th>Инструмент</th>
               <th>Сценарий</th>
+              <th>Класс</th>
               <th>Риск</th>
             </tr>
           </thead>
@@ -638,12 +633,12 @@ function renderDecisionExamples(rows) {
             ${rows
               .map(
                 (row, index) => `
-                  <tr class="example-row ${index === 0 ? "is-active" : ""}" data-example-index="${index}">
+                  <tr class="example-row example-row-${escapeHtml(row.decision)} ${index === 0 ? "is-active" : ""}" data-example-index="${index}" ${tooltipAttr(`${formatDecision(row.decision)} | ${formatScenario(row.scenario_type)} | risk ${Number(row.risk_score || 0).toFixed(2)}`)}>
                     <td>${escapeHtml(row.id)}</td>
-                    <td>${escapeHtml(formatCategory(row.label, "label"))}</td>
-                    <td>${escapeHtml(formatDecision(row.decision))}</td>
+                    <td><span class="inline-badge inline-badge-${escapeHtml(row.decision)}">${escapeHtml(formatDecision(row.decision))}</span></td>
                     <td>${escapeHtml(row.tool_name)}</td>
                     <td>${escapeHtml(formatScenario(row.scenario_type))}</td>
+                    <td>${escapeHtml(formatCategory(row.label, "label"))}</td>
                     <td>${Number(row.risk_score || 0).toFixed(2)}</td>
                   </tr>
                 `
@@ -664,6 +659,7 @@ function renderDecisionExamples(rows) {
     if (!row || !detailTarget) return;
     rowNodes.forEach((node) => node.classList.toggle("is-active", Number(node.dataset.exampleIndex) === index));
     detailTarget.innerHTML = `
+      <div class="example-detail-tone example-detail-tone-${escapeHtml(row.decision)}"></div>
       <span class="signal-label">Событие ${escapeHtml(row.id)}</span>
       <h4>${escapeHtml(row.tool_name)}</h4>
       <div class="example-detail-meta">
@@ -1106,86 +1102,100 @@ function renderCatboostMetricCurves(models) {
   ];
 
   if (baselineTarget) {
-    baselineTarget.innerHTML = buildMetricPairChartMarkup(metricRows, "CatBoost baseline", "CatBoost tuned");
+    baselineTarget.innerHTML = buildCatboostSmallMultiples(metricRows);
   }
 
   if (tunedTarget) {
-    tunedTarget.innerHTML = buildDeltaBarChartMarkup(metricRows);
+    tunedTarget.innerHTML = buildCatboostDeltaOverview(metricRows);
   }
 }
 
-function buildMetricPairChartMarkup(rows, beforeLabel, afterLabel) {
-  const max = Math.max(
-    ...rows.flatMap((row) => [Number(row.before || 0), Number(row.after || 0)]),
-    1
+function buildCatboostSmallMultiples(rows) {
+  const featured = rows.filter((row) =>
+    ["Macro Precision", "Macro Recall", "PR-AUC OVR", "ROC-AUC OVR"].includes(row.label)
   );
-
   return `
     <div class="chart-shell">
-      <div class="metric-pair-chart">
-        ${rows
+      <div class="mini-chart-grid">
+        ${featured
           .map(
             (row) => `
-              <div class="metric-pair-item" ${tooltipAttr(`${row.label} | ${beforeLabel}: ${Number(row.before || 0).toFixed(4)} | ${afterLabel}: ${Number(row.after || 0).toFixed(4)}`)}>
-                <div class="metric-pair-values">
-                  <span class="metric-pair-top">${Number(row.after || 0).toFixed(4)}</span>
+              <div class="mini-chart-card">
+                <h4>${escapeHtml(row.label)}</h4>
+                <div class="mini-chart-body">
+                  ${renderLineChartMarkup({
+                    rows: [
+                      { x: 1, series: { Metric: Number(row.before || 0) } },
+                      { x: 2, series: { Metric: Number(row.after || 0) } },
+                    ],
+                    xFormatter: (value) => (Number(value) === 1 ? "Baseline" : "Tuned"),
+                    pointTitleFormatter: ({ x, value }) =>
+                      `${row.label}\n${Number(x) === 1 ? "Baseline" : "Tuned"}: ${Number(value).toFixed(4)}`,
+                    yDomain: {
+                      min: Math.min(Number(row.before || 0), Number(row.after || 0)) - 0.01,
+                      max: Math.max(Number(row.before || 0), Number(row.after || 0)) + 0.01,
+                    },
+                    compact: true,
+                  })}
                 </div>
-                <div class="metric-pair-bars">
-                  <div class="metric-pair-track">
-                    <div class="metric-pair-fill accent" style="height:${(Number(row.before || 0) / max) * 100}%"></div>
-                  </div>
-                  <div class="metric-pair-track">
-                    <div class="metric-pair-fill teal" style="height:${(Number(row.after || 0) / max) * 100}%"></div>
-                  </div>
-                </div>
-                <div class="metric-pair-values">
-                  <span>${Number(row.before || 0).toFixed(4)}</span>
-                </div>
-                <div class="metric-pair-label">${escapeHtml(row.label)}</div>
               </div>
             `
           )
           .join("")}
-      </div>
-      <div class="chart-legend compact-legend">
-        <div class="legend-item"><span class="legend-swatch" style="background:var(--accent)"></span><strong>${escapeHtml(beforeLabel)}</strong></div>
-        <div class="legend-item"><span class="legend-swatch" style="background:var(--teal)"></span><strong>${escapeHtml(afterLabel)}</strong></div>
       </div>
     </div>
   `;
 }
 
-function buildDeltaBarChartMarkup(rows) {
-  const deltas = rows.map((row) => ({
+function buildCatboostDeltaOverview(rows) {
+  const deltas = rows.map((row, index) => ({
     label: row.label,
+    x: index + 1,
     delta: Number(row.after || 0) - Number(row.before || 0),
     before: Number(row.before || 0),
     after: Number(row.after || 0),
   }));
-  const maxDelta = Math.max(...deltas.map((row) => Math.abs(row.delta)), 0.0001);
+  const maxDelta = Math.max(...deltas.map((row) => row.delta), 0.001);
 
   return `
     <div class="chart-shell">
-      <div class="metric-delta-chart">
-        ${deltas
-          .map(
-            (row) => `
-              <div class="metric-delta-item" ${tooltipAttr(`${row.label} | baseline: ${row.before.toFixed(4)} | tuned: ${row.after.toFixed(4)} | delta: ${row.delta >= 0 ? "+" : ""}${row.delta.toFixed(4)}`)}>
-                <div class="metric-delta-value">${row.delta >= 0 ? "+" : ""}${row.delta.toFixed(4)}</div>
-                <div class="metric-delta-track">
-                  <div class="metric-delta-fill teal" style="height:${(Math.abs(row.delta) / maxDelta) * 100}%"></div>
-                </div>
-                <div class="metric-delta-label">${escapeHtml(row.label)}</div>
-              </div>
-            `
-          )
-          .join("")}
+      <div class="delta-feature-card">
+        <h4>Прирост tuned по метрикам</h4>
+        ${renderLineChartMarkup({
+          rows: deltas.map((row) => ({
+            x: row.x,
+            series: { Delta: row.delta },
+          })),
+          xFormatter: (value) => {
+            const row = deltas.find((item) => item.x === Number(value));
+            if (!row) return String(value);
+            return row.label
+              .replace("Balanced Accuracy", "BA")
+              .replace("Macro Precision", "Precision")
+              .replace("Macro Recall", "Recall");
+          },
+          pointTitleFormatter: ({ x, value }) => {
+            const row = deltas.find((item) => item.x === Number(x));
+            if (!row) return `Delta: ${Number(value).toFixed(4)}`;
+            return [
+              row.label,
+              `baseline: ${row.before.toFixed(4)}`,
+              `tuned: ${row.after.toFixed(4)}`,
+              `delta: ${value >= 0 ? "+" : ""}${Number(value).toFixed(4)}`,
+            ].join("\n");
+          },
+          pointLabelFormatter: ({ value }) => `${value >= 0 ? "+" : ""}${Number(value).toFixed(4)}`,
+          yDomain: {
+            min: 0,
+            max: maxDelta + 0.003,
+          },
+        })}
       </div>
-      <div class="comparison-list">
+      <div class="comparison-list comparison-list-compact">
         ${deltas
           .map(
             (row) => `
-              <div class="comparison-row">
+              <div class="comparison-row comparison-row-tight">
                 <div class="comparison-title">
                   <strong>${escapeHtml(row.label)}</strong>
                   <span>${row.delta >= 0 ? "+" : ""}${row.delta.toFixed(4)}</span>
@@ -1415,6 +1425,83 @@ function renderVerticalChart(targetId, values, type, options = {}) {
   `;
 }
 
+function renderHorizontalRankChart(targetId, values, type, options = {}) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+
+  const entries = Object.entries(values)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, options.limit || 8);
+  if (!entries.length) {
+    target.innerHTML = '<div class="empty-state compact-empty">Данные недоступны.</div>';
+    return;
+  }
+
+  const palette = options.palette || [];
+  const max = Math.max(...entries.map(([, value]) => Number(value)), 1);
+
+  target.innerHTML = `
+    <div class="chart-shell">
+      <div class="ranked-chart">
+        ${entries
+          .map(([key, value], index) => {
+            const fillColor = palette[index] || chartColor(key, type);
+            return `
+              <div class="ranked-row" ${tooltipAttr(`${formatCategory(key, type)}: ${value}`)}>
+                <div class="ranked-head">
+                  <strong>${escapeHtml(formatCategory(key, type))}</strong>
+                  <span>${value}</span>
+                </div>
+                <div class="ranked-track">
+                  <div class="ranked-fill" style="width:${(Number(value) / max) * 100}%; background:${fillColor}"></div>
+                </div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderLollipopChart(targetId, values, type, options = {}) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+
+  const entries = Object.entries(values)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, options.limit || 6);
+  if (!entries.length) {
+    target.innerHTML = '<div class="empty-state compact-empty">Данные недоступны.</div>';
+    return;
+  }
+
+  const palette = options.palette || [];
+  const max = Math.max(...entries.map(([, value]) => Number(value)), 1);
+
+  target.innerHTML = `
+    <div class="chart-shell">
+      <div class="lollipop-chart">
+        ${entries
+          .map(([key, value], index) => {
+            const fillColor = palette[index] || chartColor(key, type);
+            return `
+              <div class="lollipop-row" ${tooltipAttr(`${formatCategory(key, type)}: ${value}`)}>
+                <div class="lollipop-label">${escapeHtml(formatCategory(key, type))}</div>
+                <div class="lollipop-axis">
+                  <div class="lollipop-line"></div>
+                  <div class="lollipop-dot" style="left: calc(${(Number(value) / max) * 100}% - 9px); background:${fillColor}"></div>
+                </div>
+                <div class="lollipop-value">${value}</div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
 function renderFeatureImportanceChart(features) {
   const top = features.slice(0, 6).map((item) => [cleanFeatureName(item.feature), Number(item.importance)]);
   renderVerticalChartFromPairs("feature-chart", top, { color: "var(--teal)" });
@@ -1459,14 +1546,22 @@ function renderVerticalChartFromPairs(targetId, pairs, options = {}) {
   `;
 }
 
-function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter, yDomain = null, summary = "" }) {
+function renderLineChartMarkup({
+  rows,
+  xFormatter,
+  pointTitleFormatter,
+  pointLabelFormatter = null,
+  yDomain = null,
+  summary = "",
+  compact = false,
+}) {
   if (!rows.length) {
     return '<div class="empty-state compact-empty">Данные недоступны.</div>';
   }
 
-  const width = 520;
-  const height = 240;
-  const padding = { top: 20, right: 18, bottom: 38, left: 38 };
+  const width = compact ? 320 : 520;
+  const height = compact ? 180 : 240;
+  const padding = compact ? { top: 18, right: 14, bottom: 34, left: 32 } : { top: 20, right: 18, bottom: 38, left: 38 };
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
 
@@ -1503,9 +1598,13 @@ function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter, yDomain 
           const title = pointTitleFormatter
             ? pointTitleFormatter({ x: row.x, seriesName, value: Number(row.series[seriesName]) })
             : `${seriesName}\n${xFormatter(row.x)}: ${Number(row.series[seriesName]).toFixed(4)}`;
+          const pointLabel = pointLabelFormatter
+            ? pointLabelFormatter({ x: row.x, seriesName, value: Number(row.series[seriesName]) })
+            : Number(row.series[seriesName]).toFixed(4);
           return `
-            <circle cx="${x}" cy="${y}" r="4.5" fill="${color}"></circle>
-            <circle cx="${x}" cy="${y}" r="12" fill="transparent" stroke="transparent" pointer-events="all" class="chart-hit-circle" ${tooltipAttr(title)}></circle>
+            <circle cx="${x}" cy="${y}" r="${compact ? 4 : 4.5}" fill="${color}"></circle>
+            <circle cx="${x}" cy="${y}" r="${compact ? 11 : 12}" fill="transparent" stroke="transparent" pointer-events="all" class="chart-hit-circle" ${tooltipAttr(title)}></circle>
+            <text x="${x}" y="${y - 10}" text-anchor="middle" class="line-point-value">${escapeHtml(pointLabel)}</text>
           `;
         })
         .join("");
@@ -1538,10 +1637,8 @@ function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter, yDomain 
         ${seriesMarkup}
         ${xLabels}
       </svg>
-      <div class="metric-inline-list">
-        ${summaryRows}
-      </div>
-      <div class="chart-legend compact-legend">
+      ${compact ? "" : `<div class="metric-inline-list">${summaryRows}</div>`}
+      ${compact ? "" : `<div class="chart-legend compact-legend">
         ${seriesNames
           .map(
             (name, index) => `
@@ -1552,7 +1649,7 @@ function renderLineChartMarkup({ rows, xFormatter, pointTitleFormatter, yDomain 
             `
           )
           .join("")}
-      </div>
+      </div>`}
     </div>
   `;
 }
