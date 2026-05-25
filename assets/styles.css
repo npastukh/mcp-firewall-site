@@ -370,7 +370,7 @@ body::before {
 }
 
 .stage1-top-grid {
-  grid-template-columns: minmax(280px, 0.72fr) minmax(620px, 1.28fr);
+  grid-template-columns: minmax(420px, 1.08fr) minmax(500px, 0.92fr);
 }
 
 .stage1-tools-grid {
@@ -826,17 +826,17 @@ body::before {
 
 #scenario-chart .vbar-chart {
   grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 #scenario-chart .vbar-item {
-  grid-template-rows: auto 170px minmax(3.2em, auto);
+  grid-template-rows: auto 170px minmax(2.8em, auto);
 }
 
 #scenario-chart .vbar-label {
-  min-height: 3.2em;
-  font-size: 0.8rem;
-  line-height: 1.2;
+  min-height: 2.8em;
+  font-size: 0.76rem;
+  line-height: 1.15;
 }
 
 #label-chart .chart-shell-donut,

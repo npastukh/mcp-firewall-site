@@ -365,7 +365,6 @@ async function initDashboardPage() {
     renderThresholdCurve(eda.gliner?.evaluation?.threshold_curve || []);
     renderGlinerLabelComparison(eda.gliner?.evaluation?.label_comparison || []);
     renderArchitecture(data || {});
-    renderFinalFindings(eda, data || {});
     renderFinalImplementation();
   } catch (error) {
     const target = document.getElementById("catboost-overview");
@@ -1288,76 +1287,18 @@ function renderMultiStageMetricCurve(metricKeys, seriesRows) {
   });
 }
 
-function renderFinalFindings(eda, data) {
-  const target = document.getElementById("final-findings");
-  if (!target) return;
-
-  const bestThreshold =
-    eda?.gliner?.evaluation?.threshold_curve?.reduce(
-      (winner, row) => (Number(row.gated_f1 || 0) > Number(winner?.gated_f1 || 0) ? row : winner),
-      eda?.gliner?.evaluation?.threshold_curve?.[0] || null
-    ) || null;
-
-  const cards = [
-    {
-      title: "Правила",
-      text: "Явные нарушения фиксируются до подключения semantic-stage.",
-    },
-    {
-      title: "CatBoost",
-      text: "В первом этапе основной рабочий контур построен на связке правил и CatBoost.",
-    },
-    {
-      title: "LoRA",
-      text: bestThreshold
-        ? `После дообучения semantic-stage устойчивее обрабатывает подозрительные запросы; для рабочего контура выбран threshold ${Number(bestThreshold.threshold).toFixed(2)}.`
-        : "После дообучения semantic-stage устойчивее обрабатывает подозрительные запросы.",
-    },
-  ];
-
-  target.innerHTML = cards
-    .map(
-      (card) => `
-        <article class="signal-card signal-ready">
-          <strong>${escapeHtml(card.title)}</strong>
-          <p>${escapeHtml(card.text)}</p>
-        </article>
-      `
-    )
-    .join("");
-}
-
 function renderFinalImplementation() {
   const target = document.getElementById("final-implementation");
   if (!target) return;
 
-  const items = [
-    {
-      title: "Основной контур",
-      text: "Rules + CatBoost для базовой проверки каждого события.",
-    },
-    {
-      title: "Semantic-stage",
-      text: "GLiNER + LoRA подключается только к подозрительным случаям.",
-    },
-    {
-      title: "Инфраструктура",
-      text: "GitHub Pages и serverless API в Yandex Cloud собирают рабочий демонстрационный стенд.",
-    },
-  ];
-
-  target.innerHTML = items
-    .map(
-      (item) => `
-        <div class="comparison-row comparison-row-tight">
-          <div class="comparison-title">
-            <strong>${escapeHtml(item.title)}</strong>
-          </div>
-          <p class="kpi-note">${escapeHtml(item.text)}</p>
-        </div>
-      `
-    )
-    .join("");
+  target.innerHTML = `
+    <div class="comparison-row comparison-row-tight">
+      <div class="comparison-title">
+        <strong>Рабочий стенд</strong>
+      </div>
+      <p class="kpi-note">GitHub Pages, serverless API в Yandex Cloud и общий дашборд собирают итоговую демонстрацию проекта.</p>
+    </div>
+  `;
 }
 
 function renderDonutChart(targetId, values, type, centerLabel = "") {
