@@ -765,6 +765,12 @@ body::before {
   font-size: 0.86rem;
 }
 
+.vbar-value {
+  text-align: center;
+  justify-self: center;
+  width: 100%;
+}
+
 .vbar-label {
   color: var(--muted);
   line-height: 1.35;
@@ -807,6 +813,20 @@ body::before {
 #gliner-balance-chart .donut-chart {
   width: 240px;
   height: 240px;
+}
+
+#gliner-balance-chart .chart-shell-donut {
+  grid-template-columns: minmax(300px, 0.95fr) minmax(0, 1.05fr);
+  min-height: 320px;
+}
+
+#gliner-balance-chart .donut-visual {
+  justify-self: center;
+  margin-inline: auto;
+}
+
+#gliner-balance-chart .chart-legend {
+  align-content: center;
 }
 
 #label-chart .legend-total,
@@ -1457,6 +1477,10 @@ body::before {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 16px;
+}
+
+#catboost-rule-layer {
+  margin-top: 10px;
 }
 
 .rule-layer-summary-single {

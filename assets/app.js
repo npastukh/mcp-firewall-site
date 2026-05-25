@@ -204,8 +204,8 @@ function renderOverallResult(data) {
       </div>
       <p class="decision-rationale">${escapeHtml(data.final_rationale || "Результат ещё не сформирован.")}</p>
       <div class="decision-meta">
-        <span>Stage 1: ${formatDecision(stage1State)}</span>
-        <span>Stage 2: ${formatDecision(stage2State)}</span>
+        <span>Этап 1: ${formatDecision(stage1State)}</span>
+        <span>Этап 2: ${formatDecision(stage2State)}</span>
       </div>
     </article>
   `;
@@ -444,7 +444,7 @@ function renderCatboostSplit(splitProtocol) {
     {
       label: "Тестовая часть",
       value: `${splitProtocol.test_rows || 0} строк / ${splitProtocol.test_groups || 0} групп`,
-      note: "Финальная оценка считалась на отдельной тестовой части после подбора гиперпараметров.",
+      note: "Отдельная тестовая часть использовалась для итоговой оценки выбранной конфигурации.",
     },
   ];
 
@@ -949,7 +949,7 @@ function renderGlinerOverview(gliner) {
     {
       label: "Порог для тестовой оценки",
       value: String(threshold),
-      note: "Итоговая тестовая оценка GLiNER2 + LoRA в дипломе дана для threshold = 0.99.",
+      note: "Итоговая тестовая оценка рассчитывалась для threshold = 0.99.",
     },
     {
       label: "Gated F1 на тесте",
@@ -1307,13 +1307,13 @@ function renderFinalFindings(eda, data) {
     },
     {
       title: "CatBoost",
-      text: `Лучший результат первого этапа: PR-AUC OVR ${Number(bestModel?.pr_auc_ovr || 0).toFixed(4)}.`,
+      text: "В первом этапе основным рабочим контуром выбрана связка правил и CatBoost.",
     },
     {
       title: "LoRA",
       text: bestThreshold
-        ? `После дообучения request F1 вырос до ${Number(after.f1 || 0).toFixed(4)}, gated F1 до ${Number(after.gated_f1 || 0).toFixed(4)}; выбран threshold ${Number(bestThreshold.threshold).toFixed(2)}.`
-        : `После дообучения request F1 вырос до ${Number(after.f1 || 0).toFixed(4)}, gated F1 до ${Number(after.gated_f1 || 0).toFixed(4)}.`,
+        ? `После дообучения semantic-stage точнее обрабатывает подозрительные запросы; для рабочего контура выбран threshold ${Number(bestThreshold.threshold).toFixed(2)}.`
+        : "После дообучения semantic-stage точнее обрабатывает подозрительные запросы.",
     },
   ];
 
@@ -1788,7 +1788,7 @@ function renderArchitecture(data) {
   const cards = [
     {
       step: "01",
-      title: "Агентный запрос",
+      title: "Текстовый запрос",
       text: "Текст запроса преобразуется в MCP event.",
     },
     {
@@ -1803,7 +1803,7 @@ function renderArchitecture(data) {
     },
     {
       step: "04",
-      title: "Final decision",
+      title: "Итоговое решение",
       text: "Система возвращает итоговое решение и объяснение.",
     },
   ];
