@@ -390,13 +390,14 @@ body::before {
 }
 
 .dashboard-pipeline {
-  display: grid;
-  gap: 18px;
+  display: block;
+  width: 100%;
 }
 
 .architecture-shell {
   display: grid;
   gap: 18px;
+  width: 100%;
 }
 
 .architecture-edge-row {
@@ -428,6 +429,10 @@ body::before {
   display: block;
   font-family: "Iowan Old Style", "Palatino Linotype", serif;
   font-size: 1.08rem;
+}
+
+#final-implementation {
+  padding-bottom: 14px;
 }
 
 .architecture-arrow {
