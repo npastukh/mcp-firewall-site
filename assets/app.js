@@ -346,8 +346,14 @@ async function initDashboardPage() {
       eda.catboost?.training?.confusion_matrix ? [eda.catboost.training.confusion_matrix] : data?.evaluation?.model_metrics || []
     );
     renderStageOneScheme();
-    renderGlinerOverview(eda.gliner || {});
-    renderDonutChart("gliner-balance-chart", eda.gliner?.source_corpus?.request_safety || {}, "request_safety", "запросов");
+    const glinerSplitSummary = summarizeGlinerSplitSummary(eda.gliner?.splits || {});
+    renderGlinerOverview(eda.gliner || {}, glinerSplitSummary);
+    renderDonutChart(
+      "gliner-balance-chart",
+      glinerSplitSummary.request_safety || eda.gliner?.source_corpus?.request_safety || {},
+      "request_safety",
+      "запросов"
+    );
     renderHorizontalRankChart("gliner-source-type-chart", eda.gliner?.source_corpus?.source_types || {}, "source_type", {
       limit: 8,
       palette: ["#365c5a", "#4c7875", "#5f8c89", "#78a4a1", "#8e5b2c", "#b37a43", "#c59158", "#d1a66f"],
@@ -927,18 +933,45 @@ function renderDeltaMetricListMarkup(rows, beforeLabel, afterLabel) {
     .join("");
 }
 
-function renderGlinerOverview(gliner) {
+function summarizeGlinerSplitSummary(splits) {
+  const rows = Object.values(splits || {});
+  if (!rows.length) {
+    return {
+      total_rows: 0,
+      request_safety: {},
+    };
+  }
+
+  return rows.reduce(
+    (summary, split) => {
+      summary.total_rows += Number(split?.rows || 0);
+      summary.request_safety.safe += Number(split?.safe || 0);
+      summary.request_safety.suspicious += Number(split?.suspicious || 0);
+      return summary;
+    },
+    {
+      total_rows: 0,
+      request_safety: {
+        safe: 0,
+        suspicious: 0,
+      },
+    }
+  );
+}
+
+function renderGlinerOverview(gliner, splitSummary = null) {
   const target = document.getElementById("gliner-overview");
   if (!target) return;
 
   const source = gliner.source_corpus || {};
   const after = gliner.evaluation?.after || {};
   const threshold = gliner.evaluation?.after_validation?.threshold ?? 0.99;
+  const totalRows = Number(splitSummary?.total_rows || 0) || Number(source.rows || 0);
   const cards = [
     {
-      label: "Строк в исходном корпусе",
-      value: String(source.rows || 0),
-      note: "Исходный suspicious MCP-корпус до разбиения на train, validation и test.",
+      label: "Строк в итоговой выборке",
+      value: String(totalRows),
+      note: "В итоговую выборку для train, validation и test вошла отобранная часть исходного корпуса.",
     },
     {
       label: "Типов источников",
