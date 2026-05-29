@@ -1,4 +1,5 @@
 const LOCAL_API_BASE = "http://127.0.0.1:8010";
+const DEMO_TRANSPORT_TYPE = "stdio";
 
 const EXAMPLES = [
   {
@@ -34,7 +35,6 @@ function initDemoPage() {
   const runButton = document.getElementById("run-analysis-button");
   const randomButton = document.getElementById("random-request-button");
   const promptInput = document.getElementById("prompt-input");
-  const transportInput = document.getElementById("transport-input");
   const apiOutput = document.getElementById("api-base-output");
 
   if (apiOutput) {
@@ -45,7 +45,6 @@ function initDemoPage() {
   runButton.addEventListener("click", () =>
     runAnalysis({
       prompt: promptInput.value.trim(),
-      transportType: transportInput.value,
     })
   );
   randomButton.addEventListener("click", () => applyRandomExample());
@@ -109,7 +108,7 @@ async function checkApiHealth() {
   }
 }
 
-async function runAnalysis({ prompt, transportType }) {
+async function runAnalysis({ prompt }) {
   const runButton = document.getElementById("run-analysis-button");
   const interpretationStatus = document.getElementById("interpretation-status");
   const responseStatus = document.getElementById("response-status");
@@ -136,7 +135,7 @@ async function runAnalysis({ prompt, transportType }) {
       body: JSON.stringify({
         prompt,
         client_id: "agent-1",
-        transport_type: transportType,
+        transport_type: DEMO_TRANSPORT_TYPE,
       }),
     });
 
